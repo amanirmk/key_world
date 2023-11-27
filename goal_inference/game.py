@@ -1,7 +1,7 @@
 import typing
 import tkinter as tk
 from PIL import Image, ImageTk  # type: ignore[import-untyped]
-from world import World, Door, Key, Lookups, example_world
+from goal_inference.world import World, Door, Key, Lookups
 from itertools import product
 import numpy as np
 
@@ -10,9 +10,9 @@ class Game:
     def __init__(self, world: World) -> None:
         self.BOX_SIZE = 20
         self.WALL_THICKNESS = 3
-        self.FLOOR_IMAGE = "images/floor.png"
-        self.KEY_IMAGE = "images/key.png"
-        self.AGENT_IMAGE = "images/agent.png"
+        self.FLOOR_IMAGE = "goal_inference/images/floor.png"
+        self.KEY_IMAGE = "goal_inference/images/key.png"
+        self.AGENT_IMAGE = "goal_inference/images/agent.png"
 
         self.window = tk.Tk()
         self.world = world
@@ -90,6 +90,3 @@ class Game:
                     bg = "black"
                 self.grid[y][x].config(image=image, anchor=anchor, bg=bg)  # type: ignore[call-overload]
                 self.grid[y][x].image = image  # type: ignore[attr-defined]
-
-
-Game(example_world)

@@ -1,4 +1,4 @@
-from world import World, Key
+from goal_inference.world import World, Key
 
 
 class Agent:

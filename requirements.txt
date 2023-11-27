@@ -7,8 +7,10 @@ blas=1.0=openblas
 bzip2=1.0.8=h1de35cc_0
 ca-certificates=2023.11.17=h8857fd0_0
 click=8.1.7=unix_pyh707e725_0
+coloredlogs=15.0.1=py310hecd8cb5_1
 freetype=2.12.1=hd8bbffd_0
 giflib=5.2.1=h6c40b1e_3
+humanfriendly=10.0=py310hecd8cb5_1
 jpeg=9e=h6c40b1e_1
 lcms2=2.12=hf1fd2bf_0
 lerc=3.0=he9d5cce_0

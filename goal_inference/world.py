@@ -159,4 +159,5 @@ example_world = World(
         Wall(pos=Pos((i, 20)), orientation=Orientation.HORIZONTAL)
         for i in list(range(14)) + list(range(15, 30))
     ],
+    main_door=Door()
 )

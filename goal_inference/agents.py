@@ -60,10 +60,39 @@ class Knower(Agent):
 
 
 class Watcher(Agent):
+    def __init__(
+        self,
+        pos: Pos,
+        world: World,
+        wait_for_key_press,
+        is_human: bool = False,
+    ) -> None:
+        super().__init__(pos, world)
+        self._is_human = is_human
+        self._wait_for_key_press = wait_for_key_press
+
     def choose_move(self) -> Pos:
-        # TODO: this is temporary, replace with real algorithm
         options = self.world.get_accessible_neighbors(
             self.pos, self.key.identifier if self.key else None
         )
         valid_positions = [o[0] for o in options]
+        if self._is_human:
+            return self.get_user_move()
+        # do algorithm version here
         return valid_positions[np.random.randint(len(valid_positions))]
+
+    def get_user_move(self) -> Pos:
+        assert self._is_human
+        x, y = self.pos
+        new_pos = None
+        while new_pos is None:
+            key = self._wait_for_key_press()
+            if key == "w":
+                new_pos = Pos((x, y - 1))
+            elif key == "s":
+                new_pos = Pos((x, y + 1))
+            elif key == "a":
+                new_pos = Pos((x - 1, y))
+            elif key == "d":
+                new_pos = Pos((x + 1, y))
+        return new_pos

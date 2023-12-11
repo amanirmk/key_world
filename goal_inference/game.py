@@ -11,7 +11,7 @@ Updated = Enum("Updated", ["WATCHER", "KNOWER"])
 
 
 class Game:
-    def __init__(self, world: World) -> None:
+    def __init__(self, world: World, human_player: bool) -> None:
         self.BOX_SIZE = 20
         self.WALL_THICKNESS = 3
         self.FLOOR_IMAGE = "goal_inference/images/floor.png"
@@ -19,7 +19,12 @@ class Game:
         self.AGENT_IMAGE = "goal_inference/images/agent.png"
         self.world = world
         self.knower = Knower(self.world.knower_start, self.world)
-        self.watcher = Watcher(self.world.watcher_start, self.world)
+        self.watcher = Watcher(
+            self.world.watcher_start,
+            self.world,
+            self.wait_for_key_press,
+            is_human=human_player,
+        )
 
         self.window = tk.Tk()
         self.window.geometry(
@@ -43,8 +48,18 @@ class Game:
         for x, y in product(range(self.world.shape[0]), range(self.world.shape[1])):
             self.grid[y][x].grid(row=y, column=x)
 
-        # TODO: add controls etc
+        self.key_pressed = tk.StringVar()
+        self.window.bind("<KeyPress>", self.on_key_press)
         self.play()
+
+    def on_key_press(self, event):
+        self.key_pressed.set(event.char)
+
+    def wait_for_key_press(self):
+        self.key_pressed.set("")
+        self.window.wait_variable(self.key_pressed)
+        pressed_key = self.key_pressed.get()
+        return pressed_key
 
     def key_colors(self, key_id: int) -> typing.Tuple[int, int, int]:
         colors = [

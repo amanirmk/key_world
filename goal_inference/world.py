@@ -80,42 +80,9 @@ class World:
     def add_key(self, key: Key):
         self.keys.append(key)
         self.key_lookup[key.pos] = key
-        lookups = self.validate_and_create_lookup()
-        self.key_lookup = lookups[0]
-        self.horizontal_lookup = lookups[1]
-        self.vertical_lookup = lookups[2]
-
-    def lookup(
-        self, pos: Pos, lookup_type: Lookups
-    ) -> typing.Optional[typing.Union[Wall, Door, Key]]:
-        if lookup_type is Lookups.KEY:
-            return self.key_lookup[pos]
-        elif lookup_type is Lookups.HORIZONTAL:
-            return self.horizontal_lookup[pos]
-        else:
-            return self.vertical_lookup[pos]
-
-    def remove_door(self, door: Door):
-        self.doors.remove(door)
-        if door.orientation is Orientation.HORIZONTAL:
-            del self.horizontal_lookup[door.pos]
-        else:
-            del self.vertical_lookup[door.pos]
-
-    def remove_key(self, key: Key):
-        self.keys.remove(key)
-        del self.key_lookup[key.pos]
-
-    def add_key(self, key: Key):
-        self.keys.append(key)
-        self.key_lookup[key.pos] = key
 
     def validate_and_create_lookup(
         self,
-    ) -> typing.Tuple[
-        typing.Dict[Pos, typing.Optional[Key]],
-        typing.Dict[Pos, typing.Optional[typing.Union[Wall, Door]]],
-        typing.Dict[Pos, typing.Optional[typing.Union[Wall, Door]]],
     ) -> typing.Tuple[
         typing.Dict[Pos, typing.Optional[Key]],
         typing.Dict[Pos, typing.Optional[typing.Union[Wall, Door]]],
@@ -171,7 +138,6 @@ class World:
             assert key.pos not in key_lookup
             key_lookup[key.pos] = key
 
-        return key_lookup, horizontal_lookup, vertical_lookup
         return key_lookup, horizontal_lookup, vertical_lookup
 
     def get_accessible_neighbors(

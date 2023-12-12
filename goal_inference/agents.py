@@ -50,6 +50,16 @@ class Agent(abc.ABC):
 
 
 class Knower(Agent):
+    # Knower agent knows the main door key id
+    def __init__(
+        self,
+        pos: Pos,
+        world: World,
+        main_key: int
+    ) -> None:
+        super().__init__(pos, world)
+        self.main_key = main_key
+
     def choose_move(self) -> Pos:
         # TODO: this is temporary, replace with real algorithm
         options = self.world.get_accessible_neighbors(

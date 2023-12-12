@@ -18,7 +18,11 @@ class Game:
         self.KEY_IMAGE = "goal_inference/images/key.png"
         self.AGENT_IMAGE = "goal_inference/images/agent.png"
         self.world = world
-        self.knower = Knower(self.world.knower_start, self.world)
+        self.knower = Knower(
+            self.world.knower_start, 
+            self.world,
+            self.world.maindoor.key_id # the Knower knows the goal key
+        )
         self.watcher = Watcher(
             self.world.watcher_start,
             self.world,
@@ -135,7 +139,7 @@ class Game:
     def play(self):
         turn = 0
         self.update_images()
-        while True and turn < 200:  # TODO: make into proper stopping criteria
+        while self.world.maindoor.open == False and turn <200: # update ending logic
             self.window.update_idletasks()
             self.window.update()
             turn += 1
@@ -147,4 +151,7 @@ class Game:
                 old_pos = self.knower.pos
                 new_pos = self.knower.move()
                 last_updated = Updated.KNOWER
+            if self.world.at_main_door(self.watcher.pos, self.watcher.key) and self.world.at_main_door(self.knower.pos, self.knower.key):
+                # if both agents are at the door with the correct key, open the door
+                self.world.maindoor.open = True
             self.update_images([old_pos, new_pos], last_updated)

@@ -22,6 +22,8 @@ class Agent(abc.ABC):
         )
         if isinstance(self, Knower):  # knower can stay in same spot
             options.append((self.pos, None))
+        if isinstance(self, Knower):  # knower can stay in same spot
+            options.append((self.pos, None))
         valid_positions = [o[0] for o in options]
         while pos not in valid_positions:
             pos = self.choose_move()
@@ -43,16 +45,19 @@ class Agent(abc.ABC):
     def putdown_key(self):
         self.key.pos = self.pos
         self.world.add_key(self.key)
+        self.world.add_key(self.key)
         self.key = None
 
     def pickup_key(self, key: Key):
         if self.key:
             self.putdown_key()
         self.world.remove_key(key)
+        self.world.remove_key(key)
         self.key = key
 
     @abc.abstractmethod
     def choose_move(self) -> Pos:
+        return NotImplemented
         return NotImplemented
 
 
@@ -65,6 +70,10 @@ class Knower(Agent):
         self.move_index = 0
 
     def choose_move(self) -> Pos:
+        move = self.move_list[self.move_index]
+        if self.move_index < len(self.move_list) - 1:
+            self.move_index += 1
+        return move
         move = self.move_list[self.move_index]
         if self.move_index < len(self.move_list) - 1:
             self.move_index += 1

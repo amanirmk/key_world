@@ -4,9 +4,7 @@ WORLD
 
 AGENTS
 - main door logic <- !!!
-- a*/bfs alg for knower <- !
 - inference for watcher
-- move open door function to world?
 
 GAME
 - end game logic <- !!!

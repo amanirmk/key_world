@@ -2,6 +2,7 @@ import abc
 import typing
 import numpy as np
 from goal_inference.world import World, Door, Key, Pos, Lookups
+from goal_inference.algs_knower import get_moves
 
 
 class Agent(abc.ABC):
@@ -19,13 +20,15 @@ class Agent(abc.ABC):
         options = self.world.get_accessible_neighbors(
             self.pos, self.key.identifier if self.key else None
         )
+        if isinstance(self, Knower):  # knower can stay in same spot
+            options.append((self.pos, None))
         valid_positions = [o[0] for o in options]
         while pos not in valid_positions:
             pos = self.choose_move()
 
         door: typing.Optional[Door] = options[valid_positions.index(pos)][1]
         if door:
-            self.world.doors.remove(door)
+            self.world.remove_door(door)
 
         self.pos = pos
         key: typing.Optional[Key] = self.world.lookup(self.pos, Lookups.KEY)  # type: ignore[assignment]
@@ -35,28 +38,35 @@ class Agent(abc.ABC):
 
     def putdown_key(self):
         self.key.pos = self.pos
-        self.world.keys.append(self.key)
+        self.world.add_key(self.key)
         self.key = None
 
     def pickup_key(self, key: Key):
         if self.key:
             self.putdown_key()
-        self.world.keys.remove(key)
+        self.world.remove_key(key)
         self.key = key
 
     @abc.abstractmethod
     def choose_move(self) -> Pos:
-        raise NotImplementedError()
+        return NotImplemented
 
 
 class Knower(Agent):
+    def __init__(
+        self,
+        pos: Pos,
+        world: World,
+    ) -> None:
+        super().__init__(pos, world)
+        self.move_list = get_moves(world)
+        self.move_index = 0
+
     def choose_move(self) -> Pos:
-        # TODO: this is temporary, replace with real algorithm
-        options = self.world.get_accessible_neighbors(
-            self.pos, self.key.identifier if self.key else None
-        )
-        valid_positions = [o[0] for o in options]
-        return valid_positions[np.random.randint(len(valid_positions))]
+        move = self.move_list[self.move_index]
+        if self.move_index < len(self.move_list) - 1:
+            self.move_index += 1
+        return move
 
 
 class Watcher(Agent):

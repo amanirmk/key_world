@@ -1,6 +1,6 @@
 import typing
 from collections import deque
-from goal_inference.world import World, Key, Door, Pos, Lookups
+from goal_inference.world import World, Key, Door, Pos, Lookups, Orientation
 from pydantic import BaseModel
 import copy
 
@@ -22,10 +22,11 @@ class Node(BaseModel):
 
 def get_moves(world: World) -> typing.List[Pos]:
     start = Node(pos=world.knower_start, key_id=None, used_key_ids=[], parent=None)
-    # replace position with main door and key_id with proper key
+    assert world.maindoor.orientation is Orientation.HORIZONTAL
+    goal_pos = Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1))
     goal = Node(
-        pos=world.watcher_start,
-        key_id=None,
+        pos=goal_pos,
+        key_id=world.maindoor.key_id,
         used_key_ids=[],
         parent=None,
     )

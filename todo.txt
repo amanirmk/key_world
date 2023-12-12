@@ -1,13 +1,8 @@
 WORLD
-- main door <- !!! (ingrid)
 - generate world
 
 AGENTS
-- main door logic <- !!!
 - inference for watcher
-
-GAME
-- end game logic <- !!!
 
 MISC
 - recording events of game (and playing back)

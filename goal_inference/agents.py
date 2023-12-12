@@ -1,7 +1,7 @@
 import abc
 import typing
 import numpy as np
-from goal_inference.world import World, Door, Key, Pos, Lookups
+from goal_inference.world import World, Door, Key, Pos, Lookups, MainDoor
 from goal_inference.algs_knower import get_moves
 
 
@@ -27,7 +27,11 @@ class Agent(abc.ABC):
             pos = self.choose_move()
 
         door: typing.Optional[Door] = options[valid_positions.index(pos)][1]
+        if isinstance(door, MainDoor):
+            # redo choice if main door
+            return self.move()
         if door:
+            # otherwise remove door
             self.world.remove_door(door)
 
         self.pos = pos
@@ -54,12 +58,7 @@ class Agent(abc.ABC):
 
 class Knower(Agent):
     # Knower agent knows the main door key id
-    def __init__(
-        self,
-        pos: Pos,
-        world: World,
-        main_key_id: int
-    ) -> None:
+    def __init__(self, pos: Pos, world: World, main_key_id: int) -> None:
         super().__init__(pos, world)
         self.main_key_id = main_key_id
         self.move_list = get_moves(world)

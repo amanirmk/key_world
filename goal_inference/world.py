@@ -21,8 +21,9 @@ class Door(Wall):
     def __hash__(self):
         return 3 * hash(self.key_id) + hash("Door")
 
+
 class MainDoor(Door):
-    open: bool
+    is_open: bool
 
 
 class Key(BaseModel):
@@ -47,6 +48,7 @@ class World:
         self.watcher_start = watcher_start
         self.keys = keys
         self.doors = doors
+        self.doors.append(maindoor)
         self.maindoor = maindoor
         self.walls = walls
         lookups = self.validate_and_create_lookup()
@@ -105,7 +107,7 @@ class World:
 
         key_ids = [key.identifier for key in self.keys]
         door_keys = [door.key_id for door in self.doors]
-        assert len(key_ids) == len(set(key_ids))
+        assert len(key_ids) == 2 * len(set(key_ids))
         assert len(door_keys) == len(set(door_keys))
         assert set(key_ids) == set(door_keys)
 
@@ -170,55 +172,25 @@ class World:
         return accessible_neighbors
 
     def at_main_door(self, pos: Pos, key_id: typing.Optional[int]):
-        return self.maindoor.pos in self.get_accessible_neighbors(pos, key_id)
+        x, y = self.maindoor.pos
+        return (
+            pos[0] == x
+            and pos[1] == y
+            or pos[1] == y - 1
+            and self.maindoor.key_id == key_id
+        )
 
-def generate_world(seed: int):
-    # TODO: randomly generate world from seed
-    # e.g. choose layout (from existing set?), place keys, pick which key is for middle door, etc
-
-    random.seed(seed)
-    # Define world dimensions (example: 30x40)
-    shape = (30, 40)
-
-    # Generate walls 
-    walls = [Wall(pos=Pos((random.randint(0, shape[0]-1), random.randint(0, shape[1]-1))), 
-                   orientation=random.choice(list(Orientation))) for _ in range(100)]
-
-    # Generate doors and keys
-    num_doors = 5
-    doors = []
-    keys = []
-    for i in range(num_doors):
-        door_pos = Pos((random.randint(0, shape[0]-1), random.randint(0, shape[1]-1)))
-        key_pos = Pos((random.randint(0, shape[0]-1), random.randint(0, shape[1]-1)))
-        doors.append(Door(pos=door_pos, orientation=random.choice(list(Orientation)), key_id=i))
-        keys.append(Key(pos=key_pos, identifier=i))
-    
-    # Place main door and key
-    maindoor = MainDoor(pos=Pos((random.randint(0, shape[0]-1), random.randint(0, shape[1]-1))), 
-                        orientation=random.choice(list(Orientation)), key_id=num_doors, open=False)
-
-    # Set knower and watcher start
-    knower_start = Pos((random.randint(0, shape[0]-1), random.randint(0, shape[1]-1)))
-    watcher_start = Pos((random.randint(0, shape[0]-1), random.randint(0, shape[1]-1)))
-
-    # Create and return the world
-    return World(shape=shape, knower_start=knower_start, watcher_start=watcher_start, 
-                 keys=keys, doors=doors, maindoor=maindoor, walls=walls)
-
-
-
-# Example usage
-# example_world = generate_world(seed=12345)
 
 # Example usage
 example_world = World(
     shape=(30, 40),
     knower_start=Pos((14, 2)),
     watcher_start=Pos((17, 30)),
-    keys=[Key(pos=Pos((2, 5)), identifier=1)],
-    doors=[Door(pos=Pos((10, 20)), orientation=Orientation.HORIZONTAL, key_id=1)],
-    maindoor=MainDoor(pos=Pos((15, 20)), orientation=Orientation.HORIZONTAL, key_id=3, open=False),
+    keys=[Key(pos=Pos((2, 5)), identifier=1), Key(pos=Pos((21, 26)), identifier=1)],
+    doors=[],
+    maindoor=MainDoor(
+        pos=Pos((14, 20)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
+    ),
     walls=[
         Wall(pos=Pos((i, 20)), orientation=Orientation.HORIZONTAL)
         for i in list(range(14)) + list(range(15, 30))

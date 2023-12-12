@@ -19,9 +19,9 @@ class Game:
         self.AGENT_IMAGE = "goal_inference/images/agent.png"
         self.world = world
         self.knower = Knower(
-            self.world.knower_start, 
+            self.world.knower_start,
             self.world,
-            self.world.maindoor.key_id # the Knower knows the goal key
+            self.world.maindoor.key_id,  # the Knower knows the goal key
         )
         self.watcher = Watcher(
             self.world.watcher_start,
@@ -113,7 +113,7 @@ class Game:
                     anchor += "n"
                 if v_barrier:
                     anchor += "w"
-            if isinstance(h_barrier, Door) or isinstance(v_barrier, Door):
+            if issubclass(type(h_barrier), Door) or issubclass(type(v_barrier), Door):
                 door: Door = h_barrier or v_barrier  # type: ignore[assignment]
                 r, g, b = self.key_colors(door.key_id)
                 bg = f"#{r:02x}{g:02x}{b:02x}"
@@ -139,7 +139,7 @@ class Game:
     def play(self):
         turn = 0
         self.update_images()
-        while self.world.maindoor.open == False and turn <200: # update ending logic
+        while not self.world.maindoor.is_open:
             self.window.update_idletasks()
             self.window.update()
             turn += 1
@@ -151,7 +151,12 @@ class Game:
                 old_pos = self.knower.pos
                 new_pos = self.knower.move()
                 last_updated = Updated.KNOWER
-            if self.world.at_main_door(self.watcher.pos, self.watcher.key) and self.world.at_main_door(self.knower.pos, self.knower.key):
+            if self.world.at_main_door(
+                self.watcher.pos,
+                self.watcher.key.identifier if self.watcher.key else None,
+            ) and self.world.at_main_door(
+                self.knower.pos, self.knower.key.identifier if self.knower.key else None
+            ):
                 # if both agents are at the door with the correct key, open the door
-                self.world.maindoor.open = True
+                self.world.maindoor.is_open = True
             self.update_images([old_pos, new_pos], last_updated)

@@ -32,22 +32,22 @@ def get_knower_paths(world: World, knower: Knower) -> typing.Dict[typing.Union[K
     potential_goals = set()
     potential_goals.update(world.keys)
     if knower.key != None:
-        potential_goals.update(wolrd.doors)
-        potential_goals.update(world.main_door)
+        potential_goals.update(world.doors)
+        potential_goals.update(world.maindoor)
 
     potential_paths = {potential_goal: {} for potential_goal in potential_goals}
 
     for potential_goal in potential_goals:
         (_, goal_y) = potential_goal.pos
         maxY = world.shape[1] / 2
-        if goal_y > maxY: # in thw watcher's wolrd
+        if goal_y > maxY: # in thw watcher's world
             continue
         potential_paths[potential_goal] = get_knower_path(world, knower, potential_goal)
     return potential_paths
 
-def get_p_next_given_goal(world: World, knower: Knower, paths ) -> typing.Dict[Pos, float]:
+def get_p_next_given_goal(paths) -> typing.Dict[Pos, float]:
     """
-    Given a world, a knower, a goal, and a dictionary of all possible paths from the knower's current position to a potential goal,
+    Given a dictionary of all possible paths from the knower's current position to a potential goal,
     returns a dictionary of the probability of moving to each possible next position, given the goal.
     
     The probability of moving to a given position is determined by the length of the shortest path from that position to the goal,
@@ -56,17 +56,19 @@ def get_p_next_given_goal(world: World, knower: Knower, paths ) -> typing.Dict[P
     # p(a/pos |g) determined by the length of the shortest path from the next pos to the goal
     total_len = sum(len(path) for path in paths.values())
     # TODO: potential division by zero if is at the goal
+    if total_len == 0:
+        # Handling the case where the knower is already at the goal
+        return {next_pos: 0 for next_pos in paths.keys()}
     p_next_given_goal = {next_pos: 1- (len(path) / total_len) for next_pos, path in paths.items()}
     return p_next_given_goal
 
-
-def get_knower_priors(world, knower, goal):
+def get_knower_priors(world, knower):
     # find the potential goals for the knower
     potential_goals = set()
     if knower.key != None:
         # if the knower has a key, potential goals are the doors and the main door
-        potential_goals.update(wolrd.doors)
-        potential_goals.update(world.main_door)
+        potential_goals.update(world.doors)
+        potential_goals.update(world.maindoor)
     else:
         # otherwise, potential goals are the keys
         potential_goals.update(world.keys)
@@ -82,7 +84,7 @@ def get_knower_priors(world, knower, goal):
     for potential_goal in potential_goals:
         (_, goal_y) = potential_goal.pos
         maxY = world.shape[1] / 2
-        if goal_y > maxY: # in thw watcher's wolrd
+        if goal_y > maxY: # in thw watcher's world
             potential_goals.remove(potential_goal)
             del all_paths[potential_goal]
             del shortest_paths[potential_goal]
@@ -91,7 +93,7 @@ def get_knower_priors(world, knower, goal):
         # get all the paths for the knower to move from its current position to a potential goal
         paths = get_knower_path(world, knower, potential_goal)
         # p(a/pos |g)
-        p_next_given_goal = get_p_next_given_goal(world, knower, paths)
+        p_next_given_goal = get_p_next_given_goal(paths)
 
         shortest_paths[potential_goal] = min(paths.values(), key=len)
         all_paths[potential_goal] = paths
@@ -104,8 +106,32 @@ def get_knower_priors(world, knower, goal):
 
     return p_goal_priors, p_nexts_given_goals
 
+def infer_knower_move(p_goal_priors, p_nexts_given_goals):
+    # P(next_pos) for the knower to move from its current position 
+    p_nexts  = {}
+    for potential_goal, prior in p_goal_priors.items():
+        for pos, prob in p_nexts_given_goals[potential_goal].items():
+            if pos not in p_nexts:
+                p_nexts[pos] = 0 
+            p_nexts[pos] += prob * prior
+    # when accessing, need to pay attention to if the next_pos is in the p_nexts
+    return p_nexts
 
+# TODO: correct this
+def infer_goal_given_move(p_goal_priors, p_nexts_given_goals):
+    # P(g|next_pos) infer the knower to move from knower's move
+    p_goals_given_move = {}
+    for next_pos in p_nexts_given_goals.values():
+        for pos in next_pos:
+            if pos not in p_goals_given_move:
+                p_goals_given_move[pos] = {}
 
+            
+            total_prob = sum(p_nexts_given_goals[goal][pos] * p_goal_priors[goal] for goal in p_goal_priors if pos in p_nexts_given_goals[goal])
 
+            for goal in p_goal_priors:
+                if pos in p_nexts_given_goals[goal]:
+                    prob = (p_nexts_given_goals[goal][pos] * p_goal_priors[goal]) / total_prob if total_prob > 0 else 0
+                    p_goals_given_move[pos][goal] = prob
 
-
+    return p_goals_given_move

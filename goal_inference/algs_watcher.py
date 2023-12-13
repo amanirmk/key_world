@@ -1,1 +1,111 @@
 # all the juicy stuff for the Watcher
+import typing
+import copy
+
+from pydantic import BaseModel
+from collections import deque
+from goal_inference.world import World, Key, Door, MainDoor, Pos, Lookups, Orientation
+from goal_inference.algs_knower import Node, find_path, make_get_neighbors
+from goal_inference.agents import Knower
+
+def get_knower_path(world: World, knower: Knower, potential_goal) -> typing.List[typing.List[Node]]:
+    # shortest paths for the knower to move from its all next positions to the potential goal
+    (x, y) = knower.pos
+    start_node = Node(pos=(x, y), key_id=knower.key.identifier, used_key_ids=[], parent=None)  # TODO: to add used_key, need to change either world or agent class
+    maxX = world.shape[0]
+    maxY = world.shape[1] / 2
+
+    all_paths = {}
+    avalaible_pos = set([(min(x + 1, maxX), y), (max(x - 1, 0), y), (x, min(maxY, y + 1)), (x, max(0, y - 1))])
+    for next_pos in avalaible_pos:
+        start = Node(pos=next_pos, key_id=knower.key.identifier, used_key_ids=[], parent=start_node)
+        goal = Node(pos=potential_goal.pos, key_id=knower.key.identifier, used_key_ids=[], parent=None)
+
+        get_neighbors = make_get_neighbors(world)
+        path = find_path(start, goal, get_neighbors)
+        all_paths[next_pos] = path
+    return all_paths
+
+def get_knower_paths(world: World, knower: Knower) -> typing.Dict[typing.Union[Key, Door, MainDoor], typing.Dict[Pos, typing.List[Node]]]:
+    # get all the paths for the knower to move from its current position to all potential goals
+    # might not be necessary
+    potential_goals = set()
+    potential_goals.update(world.keys)
+    if knower.key != None:
+        potential_goals.update(wolrd.doors)
+        potential_goals.update(world.main_door)
+
+    potential_paths = {potential_goal: {} for potential_goal in potential_goals}
+
+    for potential_goal in potential_goals:
+        (_, goal_y) = potential_goal.pos
+        maxY = world.shape[1] / 2
+        if goal_y > maxY: # in thw watcher's wolrd
+            continue
+        potential_paths[potential_goal] = get_knower_path(world, knower, potential_goal)
+    return potential_paths
+
+def get_p_next_given_goal(world: World, knower: Knower, paths ) -> typing.Dict[Pos, float]:
+    """
+    Given a world, a knower, a goal, and a dictionary of all possible paths from the knower's current position to a potential goal,
+    returns a dictionary of the probability of moving to each possible next position, given the goal.
+    
+    The probability of moving to a given position is determined by the length of the shortest path from that position to the goal,
+    normalized by the total length of all possible paths.
+    """
+    # p(a/pos |g) determined by the length of the shortest path from the next pos to the goal
+    total_len = sum(len(path) for path in paths.values())
+    # TODO: potential division by zero if is at the goal
+    p_next_given_goal = {next_pos: 1- (len(path) / total_len) for next_pos, path in paths.items()}
+    return p_next_given_goal
+
+
+def get_knower_priors(world, knower, goal):
+    # find the potential goals for the knower
+    potential_goals = set()
+    if knower.key != None:
+        # if the knower has a key, potential goals are the doors and the main door
+        potential_goals.update(wolrd.doors)
+        potential_goals.update(world.main_door)
+    else:
+        # otherwise, potential goals are the keys
+        potential_goals.update(world.keys)
+
+    # a dictionary of all the paths for the knower to move from its current position to all potential goals
+    all_paths = {potential_goal: {} for potential_goal in potential_goals}
+    # a dictionary of the shortest path for the knower to move from its current position to all potential goals
+    shortest_paths = {potential_goal: [] for potential_goal in potential_goals}
+    # a dictionary of dictionary of the probability of moving to each possible next position, given the goal
+    p_nexts_given_goals = {potential_goal: {} for potential_goal in potential_goals}
+    
+
+    for potential_goal in potential_goals:
+        (_, goal_y) = potential_goal.pos
+        maxY = world.shape[1] / 2
+        if goal_y > maxY: # in thw watcher's wolrd
+            potential_goals.remove(potential_goal)
+            del all_paths[potential_goal]
+            del shortest_paths[potential_goal]
+            del p_nexts_given_goals[potential_goal]
+            continue
+        # get all the paths for the knower to move from its current position to a potential goal
+        paths = get_knower_path(world, knower, potential_goal)
+        # p(a/pos |g)
+        p_next_given_goal = get_p_next_given_goal(world, knower, paths)
+
+        shortest_paths[potential_goal] = min(paths.values(), key=len)
+        all_paths[potential_goal] = paths
+        p_nexts_given_goals[potential_goal] = p_next_given_goal
+    
+    # a dictionary of the probability of the goal
+    total_len = sum(len(path) for path in shortest_paths.values())
+
+    p_goal_priors = {potential_goal: 1-(len(path)/total_len) for potential_goal, path in shortest_paths.items()}
+
+    return p_goal_priors, p_nexts_given_goals
+
+
+
+
+
+

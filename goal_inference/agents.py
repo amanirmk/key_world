@@ -94,6 +94,7 @@ class Watcher(Agent):
         return valid_positions[np.random.randint(len(valid_positions))]
 
     def get_user_move(self) -> Pos:
+        print(self.world.keys)
         assert self._is_human
         x, y = self.pos
         new_pos = None

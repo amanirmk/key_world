@@ -160,3 +160,4 @@ class Game:
                 # if both agents are at the door with the correct key, open the door
                 self.world.maindoor.is_open = True
             self.update_images([old_pos, new_pos], last_updated)
+            # TODO: putting down key works in program but not visually

@@ -186,8 +186,13 @@ example_world = World(
     shape=(30, 40),
     knower_start=Pos((14, 2)),
     watcher_start=Pos((17, 30)),
-    keys=[Key(pos=Pos((2, 5)), identifier=1), Key(pos=Pos((21, 26)), identifier=1)],
-    doors=[],
+    keys=[
+        Key(pos=Pos((2, 5)), identifier=1), Key(pos=Pos((21, 26)), identifier=1),
+        Key(pos=Pos((2, 10)), identifier=2), Key(pos=Pos((6, 26)), identifier=2)
+    ],
+    doors=[
+        Door(pos=Pos((24, 15)), orientation=Orientation.VERTICAL, key_id=2)
+    ],
     maindoor=MainDoor(
         pos=Pos((14, 20)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
     ),

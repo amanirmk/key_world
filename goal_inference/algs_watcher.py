@@ -159,20 +159,54 @@ def infer_goal_given_move(p_goal_priors, p_nexts_given_goals):
     return p_goals_given_move
 
 
-def get_moves_dist(self, world: World, knower: Knower):
+# def get_moves_dist(self, world: World, knower: Knower):
+#     p_goal_priors, p_nexts_given_goals = get_knower_priors(world, knower)
+#     p_knower_nexts = infer_knower_move(p_goal_priors, p_nexts_given_goals)
+#     p_goals_given_moves = infer_goal_given_move(p_goal_priors, p_nexts_given_goals)
+
+#     (x, y) = self.pos
+#     start_node = Node((x, y), key_id=knower.key.identifier, used_key_ids=[], parent=None)  # TODO: to add used_key, need to change either world or agent class
+#     maxX = world.shape[0]
+#     minY = world.shape[1] / 2
+
+#     all_paths = {}
+#     avalaible_pos = set([(min(x + 1, maxX), y), (max(x - 1, 0), y), (x, min(world.shape[1], y + 1)), (x, max(minY, y - 1))])
+   
+#     potential_goal = max(p_goals_given_moves[knower.pos])
+
+#     for next_pos in avalaible_pos:
+#         start = Node(pos=next_pos, key_id=self.key.identifier, used_key_ids=[], parent=start_node)
+#         goal = Node(Pos(potential_goal), key_id=self.key.identifier, used_key_ids=[], parent=None)
+
+#         get_neighbors = make_get_neighbors(world)
+#         path = find_path(start, goal, get_neighbors)
+#         all_paths[next_pos] = path
+   
+#     p_nexts_given_goal_knower = get_p_next_given_goal(all_paths)
+
+#     p_nexts_watcher = {pos:0 for pos in avalaible_pos}
+#     for next in p_nexts_given_goal_knower:
+#         p_nexts_watcher[next] += p_nexts_given_goal_knower[next] * p_knower_nexts[next]
+   
+#     return p_nexts_watcher
+
+
+def predict_knower_move(world, knower):
     p_goal_priors, p_nexts_given_goals = get_knower_priors(world, knower)
     p_knower_nexts = infer_knower_move(p_goal_priors, p_nexts_given_goals)
-    p_goals_given_moves = infer_goal_given_move(p_goal_priors, p_nexts_given_goals)
+    return p_knower_nexts
 
+def choose_move_given_knower_beliefs(self, world, knower_beliefs):
     (x, y) = self.pos
-    start_node = Node((x, y), key_id=knower.key.identifier, used_key_ids=[], parent=None)  # TODO: to add used_key, need to change either world or agent class
+    start_node = Node((x, y), key_id=self.key.identifier, used_key_ids=[], parent=None)  # TODO: to add used_key, need to change either world or agent class
+    
     maxX = world.shape[0]
     minY = world.shape[1] / 2
 
     all_paths = {}
     avalaible_pos = set([(min(x + 1, maxX), y), (max(x - 1, 0), y), (x, min(world.shape[1], y + 1)), (x, max(minY, y - 1))])
    
-    potential_goal = max(p_goals_given_moves[knower.pos])
+    potential_goal = max(knower_beliefs, key=knower_beliefs.get)
 
     for next_pos in avalaible_pos:
         start = Node(pos=next_pos, key_id=self.key.identifier, used_key_ids=[], parent=start_node)
@@ -182,23 +216,13 @@ def get_moves_dist(self, world: World, knower: Knower):
         path = find_path(start, goal, get_neighbors)
         all_paths[next_pos] = path
    
-    p_nexts_given_goal_knower = get_p_next_given_goal(all_paths)
+    p_nexts_given_goal_watcher = get_p_next_given_goal(all_paths)
 
     p_nexts_watcher = {pos:0 for pos in avalaible_pos}
-    for next in p_nexts_given_goal_knower:
-        p_nexts_watcher[next] += p_nexts_given_goal_knower[next] * p_knower_nexts[next]
+    for next in p_nexts_given_goal_watcher:
+        p_nexts_watcher[next] += p_nexts_given_goal_watcher[next] * knower_beliefs[next]
    
     return p_nexts_watcher
-
-
-def predict_knower_move(world, knower):
-    pass
-
-def choose_move_given_knower_beliefs(knower_beliefs):
-    pass
-
-def init_knower_beliefs(world, knower):
-    pass
 
 def infer_knower_beliefs(world, knower, move_predictions):
     pass
@@ -206,9 +230,9 @@ def infer_knower_beliefs(world, knower, move_predictions):
 
 
 # in agents (watcher class)
-# self.knower_beliefs = init_knower_beliefs
-# self.move_predictions = predict_knower_move(world, knower)
-# choose_move_given_knower_beliefs(self.knower_beliefs)
+# self.knower_beliefs()= init_knower_beliefs DONE 
+# self.move_predictions = predict_knower_move(world, knower) DONE
+# choose_move_given_knower_beliefs(self.knower_beliefs) DONE
 # --- wait --- (knower makes move)
 # (if self.move_predictions[knower.pos] < threshold)
 # self.knower_beliefs = infer_knower_beliefs(world, knower, self.move_predictions) <- old predictions for where they would go

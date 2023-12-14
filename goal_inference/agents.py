@@ -80,6 +80,7 @@ class Watcher(Agent):
         is_human: bool = False,
     ) -> None:
         super().__init__(pos, world)
+        self.knower_beliefs = self.init_knower_beliefs()
         self._is_human = is_human
         self._wait_for_key_press = wait_for_key_press
 
@@ -95,6 +96,7 @@ class Watcher(Agent):
 
     def get_user_move(self) -> Pos:
         print(self.world.keys)
+        print(self.knower_beliefs)
         assert self._is_human
         x, y = self.pos
         new_pos = None
@@ -109,3 +111,10 @@ class Watcher(Agent):
             elif key == "d":
                 new_pos = Pos((x + 1, y))
         return new_pos
+    
+    def init_knower_beliefs(self) -> typing.Dict[int, float]:
+        """
+        initializes the beliefs of the knower about the location of each key
+        :return: a dictionary mapping key id to belief based on the number of keys in the world
+        """
+        return {key.identifier: 2/len(self.world.keys) for key in self.world.keys}

@@ -107,7 +107,7 @@ class World:
         door_keys = [door.key_id for door in self.doors]
         assert len(key_ids) == 2 * len(set(key_ids))
         assert len(door_keys) == len(set(door_keys))
-        assert set(key_ids) == set(door_keys)
+        assert self.maindoor.key_id in key_ids
 
         for barrier in self.doors + self.walls:
             assert (
@@ -197,7 +197,7 @@ example_world = World(
         Key(pos=Pos((2, 10)), identifier=2),
         Key(pos=Pos((6, 26)), identifier=2),
     ],
-    doors=[Door(pos=Pos((24, 15)), orientation=Orientation.VERTICAL, key_id=1)],
+    doors=[Door(pos=Pos((24, 15)), orientation=Orientation.VERTICAL, key_id=5)],
     maindoor=MainDoor(
         pos=Pos((14, 20)), orientation=Orientation.HORIZONTAL, key_id=2, is_open=False
     ),

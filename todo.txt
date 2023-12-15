@@ -1,8 +1,9 @@
 WORLD
-- generate world
+- design some worlds
+- implement worlds (amani)
 
 AGENTS
-- inference for watcher
+- inference for watcher (both)
 
 MISC
 - recording events of game (and playing back)

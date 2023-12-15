@@ -2,9 +2,6 @@ WORLD
 - design some worlds
 - implement worlds (amani)
 
-AGENTS
--fix "impossible to reach goal" error (drop_keys branch)
-
 ANALYSIS
 - recording events of game (and playing back)
 - pipeline for running model and collecting data

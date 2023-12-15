@@ -2,7 +2,7 @@ import typing
 import tkinter as tk
 import time
 from PIL import Image, ImageTk  # type: ignore[import-untyped]
-from goal_inference.world import World, Door, Key, Lookups, Pos
+from goal_inference.world import World, Door, Key, Lookups, Pos, MainDoor
 from goal_inference.agents import Knower, Watcher
 from itertools import product
 import numpy as np
@@ -100,6 +100,8 @@ class Game:
         return pressed_key
 
     def key_colors(self, key_id: int) -> typing.Tuple[int, int, int]:
+        if key_id == -1: # main door
+            return (200, 200, 200)
         colors = [
             (6, 68, 191),
             (7, 199, 242),
@@ -147,9 +149,9 @@ class Game:
                     anchor += "n"
                 if v_barrier:
                     anchor += "w"
-            if issubclass(type(h_barrier), Door) or issubclass(type(v_barrier), Door):
+            if isinstance(h_barrier, Door) or isinstance(v_barrier, Door):
                 door: Door = h_barrier or v_barrier  # type: ignore[assignment]
-                r, g, b = self.key_colors(door.key_id)
+                r, g, b = self.key_colors(door.key_id) if not isinstance(door, MainDoor) else self.key_colors(-1)
                 bg = f"#{r:02x}{g:02x}{b:02x}"
             else:
                 bg = "black"

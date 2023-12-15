@@ -29,12 +29,14 @@ def get_knower_path(
         pos=knower.pos,
         key_id=knower.key.identifier if knower.key else None,
         used_key_ids=[],
+        dropped_keys={},
         parent=None,
     )
     goal_node = Node(
         pos=Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1)),
         key_id=goal_key_id,
         used_key_ids=[],
+        dropped_keys={},
         parent=None,
     )
     all_paths = {}
@@ -117,6 +119,7 @@ def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
         pos=watcher.pos,
         key_id=watcher.key.identifier if watcher.key else None,
         used_key_ids=[],
+        dropped_keys={},
         parent=None,
     )
     paths = {}
@@ -130,6 +133,7 @@ def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
             pos=world.maindoor.pos,
             key_id=potential_goal,
             used_key_ids=[],
+            dropped_keys={},
             parent=None,
         )
         for next_node in available_nodes:

@@ -100,7 +100,7 @@ class Game:
         return pressed_key
 
     def key_colors(self, key_id: int) -> typing.Tuple[int, int, int]:
-        if key_id == -1: # main door
+        if key_id == -1: # door
             return (200, 200, 200)
         colors = [
             (6, 68, 191),
@@ -150,8 +150,7 @@ class Game:
                 if v_barrier:
                     anchor += "w"
             if isinstance(h_barrier, Door) or isinstance(v_barrier, Door):
-                door: Door = h_barrier or v_barrier  # type: ignore[assignment]
-                r, g, b = self.key_colors(door.key_id) if not isinstance(door, MainDoor) else self.key_colors(-1)
+                r, g, b = self.key_colors(-1)
                 bg = f"#{r:02x}{g:02x}{b:02x}"
             else:
                 bg = "black"

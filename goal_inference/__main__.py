@@ -7,7 +7,7 @@ if __name__ == "__main__":
         human_player=False,
         alpha=10,
         update_criteria=("turn", 1),
-        record=True,
+        record=False,
         output_folder="./outputs",
         csv_name="log.csv",
     )

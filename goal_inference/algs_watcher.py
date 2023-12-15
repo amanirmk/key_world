@@ -73,7 +73,7 @@ def get_p_next_given_goal_from_paths(
             bad_nexts.append(pos)
             paths[pos] = []
     if len(bad_nexts) == len(paths):
-        return {pos: 0 for pos in paths}
+        return {pos: 1/len(paths) for pos in paths} # uniform if unreachable goal
     total_len = sum(len(path) for path in paths.values())  # type: ignore[misc, arg-type]
     assert total_len > 0
     p_next_given_goal = {

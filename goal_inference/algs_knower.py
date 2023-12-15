@@ -66,7 +66,6 @@ def make_get_node(
             used_key_ids=used_key_ids,
             parent=curr_node,
         )
-
     return get_node
 
 
@@ -83,10 +82,8 @@ def find_path(
             if child_node not in seen:
                 seen.add(child_node)
                 queue.append(child_node)
-    # doesn't work if dropped goal_key
+    # can't reach goal if requires picking up dropped key
     # just assume rational agent wouldn't do this
-    # this only matters for the watcher
-    # TODO: fix bug for this
     return None
 
 

@@ -41,16 +41,20 @@ class Agent(abc.ABC):
             self.pickup_key(key)
         return self.pos
 
-    def putdown_key(self):
-        self.key.pos = self.pos
-        self.world.add_key(self.key)
+    def putdown_key(self, key):
+        key.pos = self.pos
+        self.world.add_key(key)
         self.key = None
 
-    def pickup_key(self, key: Key):
+    def pickup_key(self, new_key: Key):
         if self.key:
-            self.putdown_key()
-        self.world.remove_key(key)
-        self.key = key
+            old_key = self.key
+            self.world.remove_key(new_key)
+            self.putdown_key(old_key)
+            self.key = new_key
+        else:
+            self.world.remove_key(new_key)
+            self.key = new_key
 
     @abc.abstractmethod
     def choose_move(self) -> Pos:

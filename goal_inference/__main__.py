@@ -6,7 +6,7 @@ if __name__ == "__main__":
         world=example_world,
         human_player=False,
         alpha=10,
-        update_criteria=("turn", 1),
+        update_criteria=("turn", 3),
         record=False,
         output_folder="./outputs",
         csv_name="log.csv",

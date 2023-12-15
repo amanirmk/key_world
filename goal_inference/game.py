@@ -1,5 +1,7 @@
 import typing
 import tkinter as tk
+import time
+import csv
 from PIL import Image, ImageTk  # type: ignore[import-untyped]
 from goal_inference.world import World, Door, Key, Lookups, Pos
 from goal_inference.agents import Knower, Watcher
@@ -63,7 +65,17 @@ class Game:
 
         self.key_pressed = tk.StringVar()
         self.window.bind("<KeyPress>", self.on_key_press)
+        
         self.play()
+
+    def record_watcher_action(self, csv_writer, turn, old_pos, new_pos, reaction_time, world_status):
+        csv_writer.writerow({
+            "turn": turn,
+            "old_pos": old_pos,
+            "new_pos": new_pos,
+            "reaction_time": reaction_time,
+            "world_status(beliefs)": world_status
+        })
 
     def on_key_press(self, event):
         self.key_pressed.set(event.char)
@@ -150,25 +162,38 @@ class Game:
         self.update_images()
         self.window.update_idletasks()
         self.window.update()
-        while not self.world.maindoor.is_open:
-            turn += 1
-            if turn % 2:
-                old_pos = self.watcher.pos
-                new_pos = self.watcher.move()
-                last_updated = Updated.WATCHER
-            else:
-                old_pos = self.knower.pos
-                new_pos = self.knower.move()
-                last_updated = Updated.KNOWER
-            self.update_images([old_pos, new_pos], last_updated)
-            if self.world.at_main_door(
-                self.watcher.pos,
-                self.watcher.key.identifier if self.watcher.key else None,
-            ) and self.world.at_main_door(
-                self.knower.pos, self.knower.key.identifier if self.knower.key else None
-            ):
-                # if both agents are at the door with the correct key, open the door
-                self.world.maindoor.is_open = True
-            self.window.update_idletasks()
-            self.window.update()
-            # TODO: putting down key works in program but not visually
+
+        with open('watcher_actions.csv', mode='w', newline='', encoding='utf-8') as csv_file:
+            csv_writer = csv.DictWriter(csv_file, fieldnames=['turn', 'old_pos', 'new_pos', 'reaction_time', 'world_status(beliefs)'])
+            csv_writer.writeheader()
+       
+            while not self.world.maindoor.is_open:
+                turn += 1
+                if turn % 2:
+                    start_time = time.time()
+                    old_pos = self.watcher.pos
+                    new_pos = self.watcher.move()
+                    end_time = time.time()
+                    last_updated = Updated.WATCHER
+
+                    reaction_time = end_time - start_time
+                    self.record_watcher_action(csv_writer, turn, old_pos, new_pos, reaction_time, self.watcher.beliefs)
+
+
+                else:
+                    old_pos = self.knower.pos
+                    new_pos = self.knower.move()
+                    last_updated = Updated.KNOWER
+                
+                self.update_images([old_pos, new_pos], last_updated)
+                if self.world.at_main_door(
+                    self.watcher.pos,
+                    self.watcher.key.identifier if self.watcher.key else None,
+                ) and self.world.at_main_door(
+                    self.knower.pos, self.knower.key.identifier if self.knower.key else None
+                ):
+                    # if both agents are at the door with the correct key, open the door
+                    self.world.maindoor.is_open = True
+                self.window.update_idletasks()
+                self.window.update()
+                # TODO: putting down key works in program but not visually

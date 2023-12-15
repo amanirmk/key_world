@@ -1,5 +1,6 @@
 import abc
 import typing
+import numpy as np
 from goal_inference.world import World, Door, Key, Pos, Lookups, MainDoor
 from goal_inference.algs_knower import get_moves
 from goal_inference.algs_watcher import (
@@ -63,17 +64,25 @@ class Agent(abc.ABC):
 
 class Knower(Agent):
     # Knower agent knows the main door key id
-    def __init__(self, pos: Pos, world: World, main_key_id: int) -> None:
+    def __init__(
+        self,
+        pos: Pos,
+        world: World,
+        main_key_id: int,
+        move_list: typing.List[Pos] = [],
+    ) -> None:
         super().__init__(pos, world)
         self.main_key_id = main_key_id
-        self.move_list = get_moves(world)
-        self.move_index = 0
+        if move_list:
+            self.move_list = move_list
+        else:
+            self.move_list = get_moves(world)
+        self.num_moves = 0
 
     def choose_move(self) -> Pos:
         assert self.move_list is not None
-        move = self.move_list[self.move_index]
-        if self.move_index < len(self.move_list) - 1:
-            self.move_index += 1
+        move = self.move_list[min(self.num_moves, len(self.move_list) - 1)]
+        self.num_moves += 1
         return move
 
 
@@ -84,7 +93,8 @@ class Watcher(Agent):
         world: World,
         knower: Knower,
         wait_for_key_press,
-        is_human: bool = False,
+        mode: str = "model",
+        move_list: typing.Optional[typing.List[Pos]] = None,
         alpha: float = 1,
         update_criteria: typing.Tuple[str, float] = ("turn", 1),
     ) -> None:
@@ -93,27 +103,51 @@ class Watcher(Agent):
         self.knower = knower
         self.alpha = alpha
         self.beliefs = init_beliefs(self.world, self.knower, self.alpha)
-        self._is_human = is_human
+        self.mode = mode
+        self.move_list = move_list
         self._wait_for_key_press = wait_for_key_press
-        self._num_moves = 0
+        self.num_moves = 0
         self.update_criteria = update_criteria
+        if self.mode == "replay":
+            self.log_likelihood: typing.List[float] = []
+            self.action_prob: typing.List[float] = []
+            self.goal_prob: typing.List[float] = []
 
     def choose_move(self) -> Pos:
-        self._num_moves += 1
+        if self.mode == "human":
+            self.num_moves += 1
+            return self.get_user_move()
         if self.should_update():
             self.beliefs = update_beliefs(self.knower, self.predictions, self.beliefs)
-        if self._is_human:
-            return self.get_user_move()
-        self.predictions = predict_knower_move(
-            self.world, self.knower, self.beliefs, self.alpha
-        )
         move_dist = choose_move_given_beliefs(
             self, self.world, self.beliefs, alpha=self.alpha
         )
-        return max(move_dist, key=move_dist.get)
+        if self.mode == "replay":
+            assert self.move_list and self.num_moves < len(self.move_list)
+            move = self.move_list[self.num_moves]
+            self.log_likelihood.append(np.log(move_dist[move]))
+            if self.predictions:
+                self.action_prob.append(self.predictions[0][self.knower.pos])
+                self.goal_prob.append(
+                    self.predictions[1][max(self.beliefs, key=self.beliefs.get)][
+                        self.knower.pos
+                    ]
+                )
+            else:
+                self.action_prob.append(np.nan)
+                self.goal_prob.append(np.nan)
+        elif self.mode == "model":
+            move = max(move_dist, key=move_dist.get)
+        else:
+            return NotImplemented
+        self.predictions = predict_knower_move(
+            self.world, self.knower, self.beliefs, self.alpha
+        )
+        self.num_moves += 1
+        return move
 
     def get_user_move(self) -> Pos:
-        assert self._is_human
+        assert self.mode == "human"
         x, y = self.pos
         new_pos = None
         while new_pos is None:
@@ -134,11 +168,11 @@ class Watcher(Agent):
         if self.predictions is None:
             return False
         if self.update_criteria[0] == "turn":
-            return self._num_moves % self.update_criteria[1] == 0
+            return self.num_moves % self.update_criteria[1] == 0
         elif self.update_criteria[0] == "action":
             return self.predictions[0][self.knower.pos] < self.update_criteria[1]
         elif self.update_criteria[0] == "goal":
-            goal = max(self.beliefs, self.beliefs.get)
+            goal = max(self.beliefs, key=self.beliefs.get)
             return self.predictions[1][goal][self.knower.pos] < self.update_criteria[1]
         else:
             return NotImplemented

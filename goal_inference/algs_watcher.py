@@ -24,7 +24,7 @@ def normalize(prob_dict: typing.Dict[T, float], alpha: float) -> typing.Dict[T, 
 
 def get_knower_path(
     world: World, knower, goal_key_id: int
-) -> typing.Dict[Pos, typing.Optional[typing.List[Pos]]]:
+) -> typing.Dict[Pos, typing.List[Pos]]:
     start_node = Node(
         pos=knower.pos,
         key_id=knower.key.identifier if knower.key else None,
@@ -67,7 +67,7 @@ def init_beliefs(world: World, knower, alpha: float) -> typing.Dict[int, float]:
 
 
 def get_p_next_given_goal_from_paths(
-    paths: typing.Dict[Pos, typing.Optional[typing.List[Pos]]], alpha: float
+    paths: typing.Dict[Pos, typing.List[Pos]], alpha: float
 ) -> typing.Dict[Pos, float]:
     total_len = sum(len(path) for path in paths.values())  # type: ignore[misc, arg-type]
     assert total_len > 0

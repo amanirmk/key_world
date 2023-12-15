@@ -66,6 +66,7 @@ def make_get_node(
             used_key_ids=used_key_ids,
             parent=curr_node,
         )
+
     return get_node
 
 

@@ -26,8 +26,8 @@ class Game:
         output_folder: str = "./outputs",
         csv_name: str = "log.csv",
     ) -> None:
-        self.BOX_SIZE = 20
-        self.WALL_THICKNESS = 3
+        self.BOX_SIZE = 50
+        self.WALL_THICKNESS = 10
         self.FLOOR_IMAGE = "goal_inference/images/floor.png"
         self.KEY_IMAGE = "goal_inference/images/key.png"
         self.AGENT_IMAGE = "goal_inference/images/agent.png"
@@ -205,7 +205,8 @@ class Game:
                     self.watcher.pos,
                     self.watcher.key.identifier if self.watcher.key else None,
                 ) and self.world.at_main_door(
-                    self.knower.pos, self.knower.key.identifier if self.knower.key else None
+                    self.knower.pos,
+                    self.knower.key.identifier if self.knower.key else None,
                 ):
                     # if both agents are at the door with the correct key, open the door
                     self.world.maindoor.is_open = True

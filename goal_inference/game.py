@@ -11,7 +11,13 @@ Updated = Enum("Updated", ["WATCHER", "KNOWER"])
 
 
 class Game:
-    def __init__(self, world: World, human_player: bool, alpha: int, update_criteria: typing.Tuple[str, float]) -> None:
+    def __init__(
+        self,
+        world: World,
+        human_player: bool,
+        alpha: int,
+        update_criteria: typing.Tuple[str, float],
+    ) -> None:
         self.BOX_SIZE = 20
         self.WALL_THICKNESS = 3
         self.FLOOR_IMAGE = "goal_inference/images/floor.png"

@@ -136,7 +136,6 @@ def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
             path = find_path(next_node, goal_node, get_neighbors)
             paths[next_node.pos] = path
         p_nexts_given_goal_watcher = get_p_next_given_goal_from_paths(paths, alpha)
-        print(f"goal={potential_goal} (p={beliefs[potential_goal]}), p_nexts for goal={p_nexts_given_goal_watcher}")
         for next_pos in p_nexts_given_goal_watcher:
             p_nexts_watcher[next_pos] += (
                 p_nexts_given_goal_watcher[next_pos] * beliefs[potential_goal]

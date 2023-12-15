@@ -3,12 +3,13 @@ WORLD
 - implement worlds (amani)
 
 AGENTS
-- inference for watcher (both)
+-fix "impossible to reach goal" error (drop_keys branch)
 
-MISC
+ANALYSIS
 - recording events of game (and playing back)
+- pipeline for running model and collecting data
+- pipeline for evaluating model on human data
 
-
-Week 11/27 - full game implemented aside from algorithms
-Week 12/4 - algorithms + analysis pipeline
-Week 12/11 - analysis + writing! (LMAOOO)
+VISUALIZATION
+- visualization of putting down key
+- color of main door (should be gray or something)

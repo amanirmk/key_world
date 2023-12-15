@@ -1,6 +1,5 @@
 import abc
 import typing
-import numpy as np
 from goal_inference.world import World, Door, Key, Pos, Lookups, MainDoor
 from goal_inference.algs_knower import get_moves
 from goal_inference.algs_watcher import (
@@ -73,6 +72,7 @@ class Knower(Agent):
             self.move_index += 1
         return move
 
+
 class Watcher(Agent):
     def __init__(
         self,
@@ -82,7 +82,7 @@ class Watcher(Agent):
         wait_for_key_press,
         is_human: bool = False,
         alpha: float = 1,
-        update_criteria: typing.Tuple[str, float] = ("turn", 1)
+        update_criteria: typing.Tuple[str, float] = ("turn", 1),
     ) -> None:
         super().__init__(pos, world)
         self.predictions = None

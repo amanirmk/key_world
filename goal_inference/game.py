@@ -100,7 +100,7 @@ class Game:
         return pressed_key
 
     def key_colors(self, key_id: int) -> typing.Tuple[int, int, int]:
-        if key_id == -1: # door
+        if key_id == -1:  # door
             return (200, 200, 200)
         colors = [
             (6, 68, 191),
@@ -121,15 +121,10 @@ class Game:
             Pos((x, y))
             for x, y in product(range(self.world.shape[0]), range(self.world.shape[1]))
         ]
-        print()
-        print(self.world.keys)
-        print(*[(k, v.identifier) for k,v in self.world.key_lookup.items() if v])
-        print(self.watcher.key)
         for pos in positions:
             x, y = pos
             key: typing.Optional[Key] = self.world.lookup(pos, Lookups.KEY)  # type: ignore[assignment]
             if key:
-                print("drawing a key!")
                 key_color = self.key_colors(key.identifier)
                 key_image = Image.open(self.KEY_IMAGE).convert("1")
                 image = Image.new("RGB", key_image.size, key_color)
@@ -214,4 +209,3 @@ class Game:
                 self.world.maindoor.is_open = True
             self.window.update_idletasks()
             self.window.update()
-            # TODO: putting down key works in program but not visually

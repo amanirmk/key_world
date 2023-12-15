@@ -3,12 +3,8 @@ WORLD
 - implement worlds (amani)
 
 ANALYSIS
-- recording events of game (and playing back)
 - pipeline for running model and collecting data
 - pipeline for evaluating model on human data
-
-VISUALIZATION
-- visualization of putting down key
 
 QUESTION
 does our watcher have too much info?

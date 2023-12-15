@@ -69,17 +69,10 @@ def init_beliefs(world: World, knower, alpha: float) -> typing.Dict[int, float]:
 def get_p_next_given_goal_from_paths(
     paths: typing.Dict[Pos, typing.Optional[typing.List[Pos]]], alpha: float
 ) -> typing.Dict[Pos, float]:
-    bad_nexts = []
-    for pos, path in paths.items():
-        if path is None:
-            bad_nexts.append(pos)
-            paths[pos] = []
-    if len(bad_nexts) == len(paths):
-        return {pos: 1 / len(paths) for pos in paths}  # uniform if unreachable goal
     total_len = sum(len(path) for path in paths.values())  # type: ignore[misc, arg-type]
     assert total_len > 0
     p_next_given_goal = {
-        next_pos: 0 if pos in bad_nexts else 1 - (len(path) / total_len)  # type: ignore[arg-type]
+        next_pos: 1 - (len(path) / total_len)  # type: ignore[arg-type]
         for next_pos, path in paths.items()
     }
     p_next_given_goal = normalize(p_next_given_goal, alpha)

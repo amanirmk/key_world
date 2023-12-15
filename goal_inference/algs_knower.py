@@ -18,11 +18,23 @@ class Node(BaseModel):
         return self.pos == other.pos and self.key_id == other.key_id
 
     def __hash__(self):
-        return 5 * hash(self.pos) + 3 * hash(self.key_id) + sum(hash(pos)*hash(k.identifier) for pos, k in self.dropped_keys.items())
+        return (
+            5 * hash(self.pos)
+            + 3 * hash(self.key_id)
+            + sum(
+                hash(pos) * hash(k.identifier) for pos, k in self.dropped_keys.items()
+            )
+        )
 
 
 def get_moves(world: World) -> typing.Optional[typing.List[Pos]]:
-    start = Node(pos=world.knower_start, key_id=None, used_key_ids=[], dropped_keys={}, parent=None)
+    start = Node(
+        pos=world.knower_start,
+        key_id=None,
+        used_key_ids=[],
+        dropped_keys={},
+        parent=None,
+    )
     assert world.maindoor.orientation is Orientation.HORIZONTAL
     goal_pos = Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1))
     goal = Node(
@@ -58,18 +70,24 @@ def make_get_node(
         curr_key_id = curr_node.key_id
         used_key_ids = copy.deepcopy(curr_node.used_key_ids)
         dropped_keys = copy.deepcopy(curr_node.dropped_keys)
-        
+
         # open door
         if door and door.key_id == curr_key_id:
             used_key_ids.append(curr_key_id)
             curr_key_id = None
-        
+
         # pick up key
-        new_key: typing.Optional[Key] = world.lookup(pos, Lookups.KEY) # type: ignore[assignment]
-        if new_key and (new_key.identifier == curr_key_id or new_key.identifier in used_key_ids or any(new_key.identifier == k.identifier for k in dropped_keys.values())):
+        new_key: typing.Optional[Key] = world.lookup(pos, Lookups.KEY)  # type: ignore[assignment]
+        if new_key and (
+            new_key.identifier == curr_key_id
+            or new_key.identifier in used_key_ids
+            or any(new_key.identifier == k.identifier for k in dropped_keys.values())
+        ):
             # key can no longer be picked up from original spot
             new_key = None
-        assert not (new_key and pos in dropped_keys), f"{pos}, {new_key}, {dropped_keys}"
+        assert not (
+            new_key and pos in dropped_keys
+        ), f"{pos}, {new_key}, {dropped_keys}"
         if pos in dropped_keys:
             # picking up previously-dropped key
             new_key = dropped_keys[pos]
@@ -87,17 +105,6 @@ def make_get_node(
             dropped_keys=dropped_keys,
             parent=curr_node,
         )
-
-        if child_node.parent and child_node.parent.parent:
-            # if child_node.parent.parent.key_id and child_node.parent.key_id:
-                # if child_node.parent.parent.key_id != child_node.parent.key_id:
-                if child_node.pos[1] >= 20:
-                    if child_node.pos in child_node.parent.dropped_keys:
-                        if (child_node.pos == child_node.parent.parent.pos):
-                            print(child_node)
-                            # assert False
-                          # breakpoint()
-
         return child_node
 
     return get_node
@@ -116,9 +123,7 @@ def find_path(
             if child_node not in seen:
                 seen.add(child_node)
                 queue.append(child_node)
-    # can't reach goal if requires picking up dropped key
-    # just assume rational agent wouldn't do this
-    return None
+    raise RuntimeError("Could not reach the goal")
 
 
 def get_path_to(node: Node, pos_seq: typing.List[Pos] = []) -> typing.List[Pos]:

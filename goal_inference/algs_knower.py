@@ -86,6 +86,7 @@ def find_path(
     # doesn't work if dropped goal_key
     # just assume rational agent wouldn't do this
     # this only matters for the watcher
+    # TODO: fix bug for this
     return None
 
 

@@ -73,7 +73,6 @@ class Knower(Agent):
             self.move_index += 1
         return move
 
-
 class Watcher(Agent):
     def __init__(
         self,
@@ -83,6 +82,7 @@ class Watcher(Agent):
         wait_for_key_press,
         is_human: bool = False,
         alpha: float = 1,
+        update_criteria: typing.Tuple[str, float] = ("turn", 1)
     ) -> None:
         super().__init__(pos, world)
         self.predictions = None
@@ -91,11 +91,12 @@ class Watcher(Agent):
         self.beliefs = init_beliefs(self.world, self.knower, self.alpha)
         self._is_human = is_human
         self._wait_for_key_press = wait_for_key_press
+        self._num_moves = 0
+        self.update_criteria = update_criteria
 
     def choose_move(self) -> Pos:
-        if (
-            self.predictions
-        ):  # TODO: use more advanced logic (self.predictions[1][goal 1][knower.pos] < threshold)
+        self._num_moves += 1
+        if self.should_update():
             self.beliefs = update_beliefs(self.knower, self.predictions, self.beliefs)
         if self._is_human:
             return self.get_user_move()
@@ -124,3 +125,16 @@ class Watcher(Agent):
             elif key == " ":
                 new_pos = Pos((x, y))
         return new_pos
+
+    def should_update(self) -> bool:
+        if self.predictions is None:
+            return False
+        if self.update_criteria[0] == "turn":
+            return self._num_moves % self.update_criteria[1] == 0
+        elif self.update_criteria[0] == "action":
+            return self.predictions[0][self.knower.pos] < self.update_criteria[1]
+        elif self.update_criteria[0] == "goal":
+            goal = max(self.beliefs, self.beliefs.get)
+            return self.predictions[1][goal][self.knower.pos] < self.update_criteria[1]
+        else:
+            return NotImplemented

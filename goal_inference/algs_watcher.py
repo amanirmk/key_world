@@ -1,6 +1,7 @@
 # all the juicy stuff for the Watcher
 import typing
 import copy
+import numpy as np
 from goal_inference.world import World, Pos
 from goal_inference.algs_knower import Node, find_path, make_get_neighbors
 from math import isclose
@@ -9,13 +10,14 @@ T = typing.TypeVar("T")
 
 
 def confirm_normalized(prob_dict):
-    assert isclose(sum(prob_dict.values()), 1, abs_tol=1e-4)
+    total = sum(prob_dict.values())
+    assert isclose(total, 1, abs_tol=1e-4), f"sum={total}, dict={prob_dict}"
 
 
 def normalize(prob_dict: typing.Dict[T, float], alpha: float) -> typing.Dict[T, float]:
-    denom = sum(p**alpha for p in prob_dict.values())
+    denom = sum(np.power(p, alpha) for p in prob_dict.values())
     assert denom > 0
-    new_dict = {k: p**alpha / denom for k, p in prob_dict.items()}
+    new_dict = {k: np.power(p, alpha) / denom for k, p in prob_dict.items()}
     confirm_normalized(new_dict)
     return new_dict
 
@@ -134,6 +136,7 @@ def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
             path = find_path(next_node, goal_node, get_neighbors)
             paths[next_node.pos] = path
         p_nexts_given_goal_watcher = get_p_next_given_goal_from_paths(paths, alpha)
+        print(f"goal={potential_goal} (p={beliefs[potential_goal]}), p_nexts for goal={p_nexts_given_goal_watcher}")
         for next_pos in p_nexts_given_goal_watcher:
             p_nexts_watcher[next_pos] += (
                 p_nexts_given_goal_watcher[next_pos] * beliefs[potential_goal]
@@ -151,4 +154,5 @@ def update_beliefs(knower, predictions, current_beliefs):
             * current_beliefs[goal]
             / p_action[knower.pos]
         )
+    confirm_normalized(new_beliefs)
     return new_beliefs

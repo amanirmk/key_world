@@ -11,7 +11,7 @@ Updated = Enum("Updated", ["WATCHER", "KNOWER"])
 
 
 class Game:
-    def __init__(self, world: World, human_player: bool, alpha: int) -> None:
+    def __init__(self, world: World, human_player: bool, alpha: int, update_criteria: typing.Tuple[str, float]) -> None:
         self.BOX_SIZE = 20
         self.WALL_THICKNESS = 3
         self.FLOOR_IMAGE = "goal_inference/images/floor.png"
@@ -30,6 +30,7 @@ class Game:
             self.wait_for_key_press,
             is_human=human_player,
             alpha=alpha,
+            update_criteria=update_criteria,
         )
 
         self.window = tk.Tk()
@@ -141,9 +142,9 @@ class Game:
     def play(self):
         turn = 0
         self.update_images()
+        self.window.update_idletasks()
+        self.window.update()
         while not self.world.maindoor.is_open:
-            self.window.update_idletasks()
-            self.window.update()
             turn += 1
             if turn % 2:
                 old_pos = self.watcher.pos
@@ -153,6 +154,7 @@ class Game:
                 old_pos = self.knower.pos
                 new_pos = self.knower.move()
                 last_updated = Updated.KNOWER
+            self.update_images([old_pos, new_pos], last_updated)
             if self.world.at_main_door(
                 self.watcher.pos,
                 self.watcher.key.identifier if self.watcher.key else None,
@@ -161,5 +163,6 @@ class Game:
             ):
                 # if both agents are at the door with the correct key, open the door
                 self.world.maindoor.is_open = True
-            self.update_images([old_pos, new_pos], last_updated)
+            self.window.update_idletasks()
+            self.window.update()
             # TODO: putting down key works in program but not visually

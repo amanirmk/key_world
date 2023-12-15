@@ -182,8 +182,8 @@ class World:
         x, y = self.maindoor.pos
         return (
             pos[0] == x
-            and pos[1] == y
-            or pos[1] == y - 1
+            and (pos[1] == y
+            or pos[1] == y - 1)
             and self.maindoor.key_id == key_id
         )
 

@@ -27,7 +27,7 @@ class Node(BaseModel):
         )
 
 
-def get_moves(world: World) -> typing.Optional[typing.List[Pos]]:
+def get_moves(world: World) -> typing.List[Pos]:
     start = Node(
         pos=world.knower_start,
         key_id=None,
@@ -108,7 +108,6 @@ def make_get_node(
             new_key = dropped_keys[pos]
             del dropped_keys[pos]
         if new_key and curr_key_id:
-            # print(f"dropping key {curr_key_id} at {pos} bc picking up {new_key.identifier}")
             dropped_key = Key(pos=pos, identifier=curr_key_id)
             dropped_keys[pos] = dropped_key
         new_key_id = new_key.identifier if new_key else curr_key_id
@@ -125,9 +124,7 @@ def make_get_node(
     return get_node
 
 
-def find_path(
-    start: Node, goal: Node, get_neighbors
-) -> typing.Optional[typing.List[Pos]]:
+def find_path(start: Node, goal: Node, get_neighbors) -> typing.List[Pos]:
     queue = deque([start])
     seen = set([start])
     while queue:

@@ -10,6 +10,7 @@ from enum import Enum
 import pandas as pd  # type: ignore[import-untyped]
 import os
 import pathlib
+import copy
 
 Updated = Enum("Updated", ["WATCHER", "KNOWER"])
 
@@ -19,7 +20,7 @@ class Game:
         self,
         world: World,
         human_player: bool,
-        alpha: int,
+        alpha: float,
         update_criteria: typing.Tuple[str, float],
         record: bool = False,
         output_folder: str = "./outputs",
@@ -33,7 +34,8 @@ class Game:
         self.record = record
         self.output_folder = output_folder
         self.csv_name = csv_name
-        self.world = world
+        self.world = copy.deepcopy(world)
+        self.human_player = human_player
         self.knower = Knower(
             self.world.knower_start,
             self.world,
@@ -44,7 +46,7 @@ class Game:
             self.world,
             self.knower,
             self.wait_for_key_press,
-            is_human=human_player,
+            mode="human" if human_player else "model",
             alpha=alpha,
             update_criteria=update_criteria,
         )
@@ -73,8 +75,6 @@ class Game:
 
         self.key_pressed = tk.StringVar()
         self.window.bind("<KeyPress>", self.on_key_press)
-
-        self.play()
 
     def log_step(self, log_dict):
         path = pathlib.Path(self.output_folder) / self.csv_name
@@ -186,26 +186,29 @@ class Game:
                 end_time = time.time()
                 last_updated = Updated.WATCHER
                 reaction_time = end_time - start_time
-                if self.record:
-                    log_dict = {
-                        "watcher_pos": [self.watcher.pos],
-                        "knower_pos": [self.knower.pos],
-                        "reaction_time": [reaction_time],
-                    }
-                    self.log_step(log_dict)
             else:
                 old_pos = self.knower.pos
                 new_pos = self.knower.move()
                 last_updated = Updated.KNOWER
-
+                if self.record:
+                    log_dict = {
+                        "watcher_pos": [self.watcher.pos],
+                        "knower_pos": [self.knower.pos],
+                    }
+                    if self.human_player:
+                        log_dict["reaction_time"] = [reaction_time]
+                    else:
+                        log_dict["beliefs"] = [self.watcher.beliefs]
+                    self.log_step(log_dict)
+                # checking after knower moves so both agents always move same number of times
+                if self.world.at_main_door(
+                    self.watcher.pos,
+                    self.watcher.key.identifier if self.watcher.key else None,
+                ) and self.world.at_main_door(
+                    self.knower.pos, self.knower.key.identifier if self.knower.key else None
+                ):
+                    # if both agents are at the door with the correct key, open the door
+                    self.world.maindoor.is_open = True
             self.update_images([old_pos, new_pos], last_updated)
-            if self.world.at_main_door(
-                self.watcher.pos,
-                self.watcher.key.identifier if self.watcher.key else None,
-            ) and self.world.at_main_door(
-                self.knower.pos, self.knower.key.identifier if self.knower.key else None
-            ):
-                # if both agents are at the door with the correct key, open the door
-                self.world.maindoor.is_open = True
             self.window.update_idletasks()
             self.window.update()

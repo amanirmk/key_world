@@ -32,7 +32,6 @@ class Key(BaseModel):
 
 
 class World:
-    # TODO: designate end door and implement end game logic
     def __init__(
         self,
         shape: typing.Tuple[int, int],
@@ -148,25 +147,33 @@ class World:
         if pos[0] > 0:  # left
             barrier = self.lookup(pos, Lookups.VERTICAL)
             if barrier is None or (
-                isinstance(barrier, Door) and barrier.key_id == key_id
+                isinstance(barrier, Door)
+                and barrier.key_id == key_id
+                and not isinstance(barrier, MainDoor)
             ):
                 accessible_neighbors.append((Pos((pos[0] - 1, pos[1])), barrier))
         if pos[0] < self.shape[0] - 1:  # right
             barrier = self.lookup(Pos((pos[0] + 1, pos[1])), Lookups.VERTICAL)
             if barrier is None or (
-                isinstance(barrier, Door) and barrier.key_id == key_id
+                isinstance(barrier, Door)
+                and barrier.key_id == key_id
+                and not isinstance(barrier, MainDoor)
             ):
                 accessible_neighbors.append((Pos((pos[0] + 1, pos[1])), barrier))
         if pos[1] > 0:  # up
             barrier = self.lookup(pos, Lookups.HORIZONTAL)
             if barrier is None or (
-                isinstance(barrier, Door) and barrier.key_id == key_id
+                isinstance(barrier, Door)
+                and barrier.key_id == key_id
+                and not isinstance(barrier, MainDoor)
             ):
                 accessible_neighbors.append((Pos((pos[0], pos[1] - 1)), barrier))
         if pos[1] < self.shape[1] - 1:  # down
             barrier = self.lookup(Pos((pos[0], pos[1] + 1)), Lookups.HORIZONTAL)
             if barrier is None or (
-                isinstance(barrier, Door) and barrier.key_id == key_id
+                isinstance(barrier, Door)
+                and barrier.key_id == key_id
+                and not isinstance(barrier, MainDoor)
             ):
                 accessible_neighbors.append((Pos((pos[0], pos[1] + 1)), barrier))
         return accessible_neighbors
@@ -187,14 +194,14 @@ example_world = World(
     knower_start=Pos((14, 2)),
     watcher_start=Pos((17, 30)),
     keys=[
-        Key(pos=Pos((2, 5)), identifier=1), Key(pos=Pos((21, 26)), identifier=1),
-        Key(pos=Pos((2, 10)), identifier=2), Key(pos=Pos((6, 26)), identifier=2)
+        Key(pos=Pos((2, 2)), identifier=1),
+        Key(pos=Pos((21, 26)), identifier=1),
+        Key(pos=Pos((2, 10)), identifier=2),
+        Key(pos=Pos((6, 26)), identifier=2),
     ],
-    doors=[
-        Door(pos=Pos((24, 15)), orientation=Orientation.VERTICAL, key_id=2)
-    ],
+    doors=[Door(pos=Pos((24, 15)), orientation=Orientation.VERTICAL, key_id=1)],
     maindoor=MainDoor(
-        pos=Pos((14, 20)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
+        pos=Pos((14, 20)), orientation=Orientation.HORIZONTAL, key_id=2, is_open=False
     ),
     walls=[
         Wall(pos=Pos((i, 20)), orientation=Orientation.HORIZONTAL)

@@ -20,7 +20,7 @@ class Node(BaseModel):
         return 3 * hash(self.pos) + hash(self.key_id)
 
 
-def get_moves(world: World) -> typing.List[Pos]:
+def get_moves(world: World) -> typing.Optional[typing.List[Pos]]:
     start = Node(pos=world.knower_start, key_id=None, used_key_ids=[], parent=None)
     assert world.maindoor.orientation is Orientation.HORIZONTAL
     goal_pos = Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1))
@@ -70,7 +70,9 @@ def make_get_node(
     return get_node
 
 
-def find_path(start: Node, goal: Node, get_neighbors) -> typing.List[Pos]:
+def find_path(
+    start: Node, goal: Node, get_neighbors
+) -> typing.Optional[typing.List[Pos]]:
     queue = deque([start])
     seen = set([start])
     while queue:
@@ -81,7 +83,10 @@ def find_path(start: Node, goal: Node, get_neighbors) -> typing.List[Pos]:
             if child_node not in seen:
                 seen.add(child_node)
                 queue.append(child_node)
-    raise RuntimeError("Unable to find route to goal")
+    # doesn't work if dropped goal_key
+    # just assume rational agent wouldn't do this
+    # this only matters for the watcher
+    return None
 
 
 def get_path_to(node: Node, pos_seq: typing.List[Pos] = []) -> typing.List[Pos]:

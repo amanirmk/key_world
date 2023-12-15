@@ -3,6 +3,12 @@ import typing
 import numpy as np
 from goal_inference.world import World, Door, Key, Pos, Lookups, MainDoor
 from goal_inference.algs_knower import get_moves
+from goal_inference.algs_watcher import (
+    predict_knower_move,
+    choose_move_given_beliefs,
+    update_beliefs,
+    init_beliefs,
+)
 
 
 class Agent(abc.ABC):
@@ -20,16 +26,12 @@ class Agent(abc.ABC):
         options = self.world.get_accessible_neighbors(
             self.pos, self.key.identifier if self.key else None
         )
-        if isinstance(self, Knower):  # knower can stay in same spot
-            options.append((self.pos, None))
+        options.append((self.pos, None))
         valid_positions = [o[0] for o in options]
         while pos not in valid_positions:
             pos = self.choose_move()
 
         door: typing.Optional[Door] = options[valid_positions.index(pos)][1]
-        if isinstance(door, MainDoor):
-            # redo choice if main door
-            return self.move()
         if door:
             # otherwise remove door
             self.world.remove_door(door)
@@ -65,6 +67,7 @@ class Knower(Agent):
         self.move_index = 0
 
     def choose_move(self) -> Pos:
+        assert self.move_list is not None
         move = self.move_list[self.move_index]
         if self.move_index < len(self.move_list) - 1:
             self.move_index += 1
@@ -76,27 +79,35 @@ class Watcher(Agent):
         self,
         pos: Pos,
         world: World,
+        knower: Knower,
         wait_for_key_press,
         is_human: bool = False,
+        alpha: float = 1,
     ) -> None:
         super().__init__(pos, world)
-        self.knower_beliefs = self.init_knower_beliefs()
+        self.predictions = None
+        self.knower = knower
+        self.alpha = alpha
+        self.beliefs = init_beliefs(self.world, self.knower, self.alpha)
         self._is_human = is_human
         self._wait_for_key_press = wait_for_key_press
 
     def choose_move(self) -> Pos:
-        options = self.world.get_accessible_neighbors(
-            self.pos, self.key.identifier if self.key else None
-        )
-        valid_positions = [o[0] for o in options]
+        if (
+            self.predictions
+        ):  # TODO: use more advanced logic (self.predictions[1][goal 1][knower.pos] < threshold)
+            self.beliefs = update_beliefs(self.knower, self.predictions, self.beliefs)
         if self._is_human:
             return self.get_user_move()
-        # do algorithm version here
-        return valid_positions[np.random.randint(len(valid_positions))]
+        self.predictions = predict_knower_move(
+            self.world, self.knower, self.beliefs, self.alpha
+        )
+        move_dist = choose_move_given_beliefs(
+            self, self.world, self.beliefs, alpha=self.alpha
+        )
+        return max(move_dist, key=move_dist.get)
 
     def get_user_move(self) -> Pos:
-        print(self.world.keys)
-        print(self.knower_beliefs)
         assert self._is_human
         x, y = self.pos
         new_pos = None
@@ -110,11 +121,6 @@ class Watcher(Agent):
                 new_pos = Pos((x - 1, y))
             elif key == "d":
                 new_pos = Pos((x + 1, y))
+            elif key == " ":
+                new_pos = Pos((x, y))
         return new_pos
-    
-    def init_knower_beliefs(self) -> typing.Dict[int, float]:
-        """
-        initializes the beliefs of the knower about the location of each key
-        :return: a dictionary mapping key id to belief based on the number of keys in the world
-        """
-        return {key.identifier: 2/len(self.world.keys) for key in self.world.keys}

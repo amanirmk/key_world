@@ -1,238 +1,154 @@
 # all the juicy stuff for the Watcher
 import typing
-
+import copy
 from goal_inference.world import World, Pos
 from goal_inference.algs_knower import Node, find_path, make_get_neighbors
-from goal_inference.agents import Knower
+from math import isclose
+
+T = typing.TypeVar("T")
+
+
+def confirm_normalized(prob_dict):
+    assert isclose(sum(prob_dict.values()), 1, abs_tol=1e-4)
+
+
+def normalize(prob_dict: typing.Dict[T, float], alpha: float) -> typing.Dict[T, float]:
+    denom = sum(p**alpha for p in prob_dict.values())
+    assert denom > 0
+    new_dict = {k: p**alpha / denom for k, p in prob_dict.items()}
+    confirm_normalized(new_dict)
+    return new_dict
 
 
 def get_knower_path(
-    world: World, knower: Knower, potential_goal
-) -> typing.Dict[Pos, typing.List[Pos]]:
-    # shortest paths for the knower to move from its all next positions to the potential goal
-    (x, y) = knower.pos
-    # TODO: if start node is immediately through a door, then put key in used_keys
+    world: World, knower, goal_key_id: int
+) -> typing.Dict[Pos, typing.Optional[typing.List[Pos]]]:
     start_node = Node(
         pos=knower.pos,
         key_id=knower.key.identifier if knower.key else None,
         used_key_ids=[],
         parent=None,
     )
-    maxX = world.shape[0]
-    assert world.shape[1] % 2 == 0
-    maxY = world.shape[1] // 2
-
-    all_paths = {}
-    avalaible_pos = set(
-        [
-            Pos((min(x + 1, maxX), y)),
-            Pos((max(x - 1, 0), y)),
-            Pos((x, min(maxY, y + 1))),
-            Pos((x, max(0, y - 1))),
-        ]
+    goal_node = Node(
+        pos=Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1)),
+        key_id=goal_key_id,
+        used_key_ids=[],
+        parent=None,
     )
-    for next_pos in avalaible_pos:
-        start = Node(
-            pos=next_pos,
-            key_id=knower.key.identifier if knower.key else None,
-            used_key_ids=[],
-            parent=start_node,
-        )
-        goal = Node(
-            pos=potential_goal.pos,
-            key_id=knower.key.identifier if knower.key else None,
-            used_key_ids=[],
-            parent=None,
-        )
-
-        get_neighbors = make_get_neighbors(world)
-        path = find_path(start, goal, get_neighbors)
-        all_paths[next_pos] = path
+    all_paths = {}
+    stay_node = copy.deepcopy(start_node)
+    stay_node.parent = start_node
+    get_neighbors = make_get_neighbors(world)
+    possible_nodes = get_neighbors(start_node) + [stay_node]
+    for next_node in possible_nodes:
+        path = find_path(next_node, goal_node, get_neighbors)
+        all_paths[next_node.pos] = path
     return all_paths
 
 
-def get_p_next_given_goal(paths) -> typing.Dict[Pos, float]:
-    """
-    Given a dictionary of all possible paths from the knower's current position to a potential goal,
-    returns a dictionary of the probability of moving to each possible next position, given the goal.
-
-    The probability of moving to a given position is determined by the length of the shortest path from that position to the goal,
-    normalized by the total length of all possible paths.
-    """
-    # p(a/pos |g) determined by the length of the shortest path from the next pos to the goal
-    total_len = sum(len(path) for path in paths.values())
-    if total_len == 0:
-        # Handling the case where the knower is already at the goal
-        return {next_pos: 0 for next_pos in paths.keys()}
-    # TODO: add temperature
-    p_next_given_goal = {
-        next_pos: 1 - (len(path) / total_len) for next_pos, path in paths.items()
+def init_beliefs(world: World, knower, alpha: float) -> typing.Dict[int, float]:
+    potential_goals = set(k.identifier for k in world.keys)
+    if knower.key:
+        potential_goals.add(knower.key.identifier)
+    shortest_path_lengths = {}
+    for goal in potential_goals:
+        paths_to_goal = get_knower_path(world, knower, goal)
+        shortest_path_lengths[goal] = min(len(p) for p in paths_to_goal)
+    total_len = sum(shortest_path_lengths.values())
+    beliefs = {
+        goal: 1 - (length / total_len) for goal, length in shortest_path_lengths.items()
     }
+    beliefs = normalize(beliefs, alpha)
+    return beliefs
+
+
+def get_p_next_given_goal_from_paths(
+    paths: typing.Dict[Pos, typing.Optional[typing.List[Pos]]], alpha: float
+) -> typing.Dict[Pos, float]:
+    bad_nexts = []
+    for pos, path in paths.items():
+        if path is None:
+            bad_nexts.append(pos)
+            paths[pos] = []
+    if len(bad_nexts) == len(paths):
+        return {pos: 0 for pos in paths}
+    total_len = sum(len(path) for path in paths.values())  # type: ignore[misc, arg-type]
+    assert total_len > 0
+    p_next_given_goal = {
+        next_pos: 0 if pos in bad_nexts else 1 - (len(path) / total_len)  # type: ignore[arg-type]
+        for next_pos, path in paths.items()
+    }
+    p_next_given_goal = normalize(p_next_given_goal, alpha)
     return p_next_given_goal
 
 
-def get_knower_priors(world, knower):
-    # find the potential goals for the knower
-    potential_goals = set()
-    if knower.key != None:
-        # if the knower has a key, potential goals are the doors and the main door
-        # TODO: make sure to do correct positions
-        potential_goals.update(world.doors)
-        potential_goals.update(world.maindoor)
-    else:
-        # otherwise, potential goals are the keys
-        potential_goals.update(world.keys)  # TODO: filter keys here (AND NOT LINE 71)
-        # TODO: make goals actually being in front of door with a certain key
+def get_all_p_next_given_goals(
+    world: World, knower, beliefs, alpha: float
+) -> typing.Dict[int, typing.Dict[Pos, float]]:
+    p_next_given_goals = {}
+    for goal in beliefs:
+        paths_to_goal = get_knower_path(world, knower, goal)
+        p_next_given_goal = get_p_next_given_goal_from_paths(paths_to_goal, alpha)
+        p_next_given_goals[goal] = p_next_given_goal
+    return p_next_given_goals
 
-    # a dictionary of all the paths for the knower to move from its current position to all potential goals
-    all_paths = {potential_goal: {} for potential_goal in potential_goals}
-    # a dictionary of the shortest path for the knower to move from its current position to all potential goals
-    shortest_paths = {potential_goal: [] for potential_goal in potential_goals}
-    # a dictionary of dictionary of the probability of moving to each possible next position, given the goal
-    p_nexts_given_goals = {potential_goal: {} for potential_goal in potential_goals}
 
-    for potential_goal in potential_goals:
-        (_, goal_y) = potential_goal.pos
-        maxY = world.shape[1] / 2
-        if goal_y > maxY:  # in thw watcher's world
-            potential_goals.remove(potential_goal)
-            del all_paths[potential_goal]
-            del shortest_paths[potential_goal]
-            del p_nexts_given_goals[potential_goal]
-            continue
-        # get all the paths for the knower to move from its current position to a potential goal
-        paths = get_knower_path(world, knower, potential_goal)
-        # p(a/pos |g)
-        p_next_given_goal = get_p_next_given_goal(paths)
-
-        shortest_paths[potential_goal] = min(paths.values(), key=len)
-        all_paths[potential_goal] = paths
-        p_nexts_given_goals[potential_goal] = p_next_given_goal
-
-    # a dictionary of the probability of the goal
-    total_len = sum(len(path) for path in shortest_paths.values())
-
-    p_goal_priors = {
-        potential_goal: 1 - (len(path) / total_len)
-        for potential_goal, path in shortest_paths.items()
-    }
-
-    return p_goal_priors, p_nexts_given_goals
+def predict_knower_move(world: World, knower, beliefs, alpha: float):
+    p_next_given_goals = get_all_p_next_given_goals(world, knower, beliefs, alpha)
+    p_next = infer_knower_move(beliefs, p_next_given_goals)
+    return p_next, p_next_given_goals
 
 
 def infer_knower_move(p_goal_priors, p_nexts_given_goals):
-    # P(next_pos) for the knower to move from its current position
     p_nexts = {}
     for potential_goal, prior in p_goal_priors.items():
         for pos, prob in p_nexts_given_goals[potential_goal].items():
             if pos not in p_nexts:
                 p_nexts[pos] = 0
             p_nexts[pos] += prob * prior
-    # when accessing, need to pay attention to if the next_pos is in the p_nexts
+    confirm_normalized(p_nexts)
     return p_nexts
 
 
-def infer_goal_given_move(p_goal_priors, p_nexts_given_goals):
-    # P(g|next_pos) infer the knower to move from knower's move
-    p_goals_given_move = {}
-    for next_pos in p_nexts_given_goals.values():
-        for pos in next_pos:
-            if pos not in p_goals_given_move:
-                p_goals_given_move[pos] = {}
-
-            total_prob = sum(
-                p_nexts_given_goals[goal][pos] * p_goal_priors[goal]
-                for goal in p_goal_priors
-                if pos in p_nexts_given_goals[goal]
+def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
+    start_node = Node(
+        pos=watcher.pos,
+        key_id=watcher.key.identifier if watcher.key else None,
+        used_key_ids=[],
+        parent=None,
+    )
+    paths = {}
+    get_neighbors = make_get_neighbors(world)
+    stay = copy.deepcopy(start_node)
+    stay.parent = start_node
+    available_nodes = get_neighbors(start_node) + [stay]
+    p_nexts_watcher = {node.pos: 0 for node in available_nodes}
+    for potential_goal in beliefs:
+        goal_node = Node(
+            pos=world.maindoor.pos,
+            key_id=potential_goal,
+            used_key_ids=[],
+            parent=None,
+        )
+        for next_node in available_nodes:
+            path = find_path(next_node, goal_node, get_neighbors)
+            paths[next_node.pos] = path
+        p_nexts_given_goal_watcher = get_p_next_given_goal_from_paths(paths, alpha)
+        for next_pos in p_nexts_given_goal_watcher:
+            p_nexts_watcher[next_pos] += (
+                p_nexts_given_goal_watcher[next_pos] * beliefs[potential_goal]
             )
-
-            for goal in p_goal_priors:
-                if pos in p_nexts_given_goals[goal]:
-                    prob = (
-                        (p_nexts_given_goals[goal][pos] * p_goal_priors[goal])
-                        / total_prob
-                        if total_prob > 0
-                        else 0
-                    )
-                    p_goals_given_move[pos][goal] = prob
-
-    return p_goals_given_move
-
-
-# def get_moves_dist(self, world: World, knower: Knower):
-#     p_goal_priors, p_nexts_given_goals = get_knower_priors(world, knower)
-#     p_knower_nexts = infer_knower_move(p_goal_priors, p_nexts_given_goals)
-#     p_goals_given_moves = infer_goal_given_move(p_goal_priors, p_nexts_given_goals)
-
-#     (x, y) = self.pos
-#     start_node = Node((x, y), key_id=knower.key.identifier, used_key_ids=[], parent=None)  # TODO: to add used_key, need to change either world or agent class
-#     maxX = world.shape[0]
-#     minY = world.shape[1] / 2
-
-#     all_paths = {}
-#     avalaible_pos = set([(min(x + 1, maxX), y), (max(x - 1, 0), y), (x, min(world.shape[1], y + 1)), (x, max(minY, y - 1))])
-   
-#     potential_goal = max(p_goals_given_moves[knower.pos])
-
-#     for next_pos in avalaible_pos:
-#         start = Node(pos=next_pos, key_id=self.key.identifier, used_key_ids=[], parent=start_node)
-#         goal = Node(Pos(potential_goal), key_id=self.key.identifier, used_key_ids=[], parent=None)
-
-#         get_neighbors = make_get_neighbors(world)
-#         path = find_path(start, goal, get_neighbors)
-#         all_paths[next_pos] = path
-   
-#     p_nexts_given_goal_knower = get_p_next_given_goal(all_paths)
-
-#     p_nexts_watcher = {pos:0 for pos in avalaible_pos}
-#     for next in p_nexts_given_goal_knower:
-#         p_nexts_watcher[next] += p_nexts_given_goal_knower[next] * p_knower_nexts[next]
-   
-#     return p_nexts_watcher
-
-
-def predict_knower_move(world, knower):
-    p_goal_priors, p_nexts_given_goals = get_knower_priors(world, knower)
-    p_knower_nexts = infer_knower_move(p_goal_priors, p_nexts_given_goals)
-    return p_knower_nexts
-
-def choose_move_given_knower_beliefs(self, world, knower_beliefs):
-    (x, y) = self.pos
-    start_node = Node((x, y), key_id=self.key.identifier, used_key_ids=[], parent=None)  # TODO: to add used_key, need to change either world or agent class
-    
-    maxX = world.shape[0]
-    minY = world.shape[1] / 2
-
-    all_paths = {}
-    avalaible_pos = set([(min(x + 1, maxX), y), (max(x - 1, 0), y), (x, min(world.shape[1], y + 1)), (x, max(minY, y - 1))])
-   
-    potential_goal = max(knower_beliefs, key=knower_beliefs.get)
-
-    for next_pos in avalaible_pos:
-        start = Node(pos=next_pos, key_id=self.key.identifier, used_key_ids=[], parent=start_node)
-        goal = Node(Pos(potential_goal), key_id=self.key.identifier, used_key_ids=[], parent=None)
-
-        get_neighbors = make_get_neighbors(world)
-        path = find_path(start, goal, get_neighbors)
-        all_paths[next_pos] = path
-   
-    p_nexts_given_goal_watcher = get_p_next_given_goal(all_paths)
-
-    p_nexts_watcher = {pos:0 for pos in avalaible_pos}
-    for next in p_nexts_given_goal_watcher:
-        p_nexts_watcher[next] += p_nexts_given_goal_watcher[next] * knower_beliefs[next]
-   
+    confirm_normalized(p_nexts_watcher)
     return p_nexts_watcher
 
-def infer_knower_beliefs(world, knower, move_predictions):
-    pass
 
-
-
-# in agents (watcher class)
-# self.knower_beliefs()= init_knower_beliefs DONE 
-# self.move_predictions = predict_knower_move(world, knower) DONE
-# choose_move_given_knower_beliefs(self.knower_beliefs) DONE
-# --- wait --- (knower makes move)
-# (if self.move_predictions[knower.pos] < threshold)
-# self.knower_beliefs = infer_knower_beliefs(world, knower, self.move_predictions) <- old predictions for where they would go
+def update_beliefs(knower, predictions, current_beliefs):
+    p_action, p_action_given_goal = predictions
+    new_beliefs = {}
+    for goal in current_beliefs:
+        new_beliefs[goal] = (
+            p_action_given_goal[goal][knower.pos]
+            * current_beliefs[goal]
+            / p_action[knower.pos]
+        )
+    return new_beliefs

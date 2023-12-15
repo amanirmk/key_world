@@ -11,7 +11,7 @@ Updated = Enum("Updated", ["WATCHER", "KNOWER"])
 
 
 class Game:
-    def __init__(self, world: World, human_player: bool) -> None:
+    def __init__(self, world: World, human_player: bool, alpha: int) -> None:
         self.BOX_SIZE = 20
         self.WALL_THICKNESS = 3
         self.FLOOR_IMAGE = "goal_inference/images/floor.png"
@@ -26,8 +26,10 @@ class Game:
         self.watcher = Watcher(
             self.world.watcher_start,
             self.world,
+            self.knower,
             self.wait_for_key_press,
             is_human=human_player,
+            alpha=alpha,
         )
 
         self.window = tk.Tk()

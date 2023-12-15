@@ -48,7 +48,9 @@ def get_moves(world: World) -> typing.Optional[typing.List[Pos]]:
     return find_path(start, goal, get_neighbors)
 
 
-def make_get_neighbors(world: World) -> typing.Callable[[Node], typing.List[Node]]:
+def make_get_neighbors(
+    world: World, key_agnostic=False
+) -> typing.Callable[[Node], typing.List[Node]]:
     get_node = make_get_node(world)
 
     def get_neighbors(node: Node) -> typing.List[Node]:
@@ -57,6 +59,19 @@ def make_get_neighbors(world: World) -> typing.Callable[[Node], typing.List[Node
             options.update(world.get_accessible_neighbors(node.pos, key_id))
         return [get_node(node, opt) for opt in options]
 
+    def agnostic_get_neighbors(node: Node) -> typing.List[Node]:
+        options = set()
+        key_ids: typing.Set[typing.Optional[int]] = set(node.used_key_ids)
+        key_ids.add(node.key_id)
+        if node.key_id:
+            # if you have a key, you have all keys
+            key_ids.update([k.identifier for k in world.keys])
+        for key_id in key_ids:
+            options.update(world.get_accessible_neighbors(node.pos, key_id))
+        return [get_node(node, opt) for opt in options]
+
+    if key_agnostic:
+        return agnostic_get_neighbors
     return get_neighbors
 
 

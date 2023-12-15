@@ -42,7 +42,7 @@ def get_knower_path(
     all_paths = {}
     stay_node = copy.deepcopy(start_node)
     stay_node.parent = start_node
-    get_neighbors = make_get_neighbors(world)
+    get_neighbors = make_get_neighbors(world, key_agnostic=True)
     possible_nodes = get_neighbors(start_node) + [stay_node]
     for next_node in possible_nodes:
         path = find_path(next_node, goal_node, get_neighbors)

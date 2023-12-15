@@ -29,12 +29,14 @@ def get_knower_path(
         pos=knower.pos,
         key_id=knower.key.identifier if knower.key else None,
         used_key_ids=[],
+        dropped_keys={},
         parent=None,
     )
     goal_node = Node(
         pos=Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1)),
         key_id=goal_key_id,
         used_key_ids=[],
+        dropped_keys={},
         parent=None,
     )
     all_paths = {}
@@ -67,17 +69,10 @@ def init_beliefs(world: World, knower, alpha: float) -> typing.Dict[int, float]:
 def get_p_next_given_goal_from_paths(
     paths: typing.Dict[Pos, typing.Optional[typing.List[Pos]]], alpha: float
 ) -> typing.Dict[Pos, float]:
-    bad_nexts = []
-    for pos, path in paths.items():
-        if path is None:
-            bad_nexts.append(pos)
-            paths[pos] = []
-    if len(bad_nexts) == len(paths):
-        return {pos: 0 for pos in paths}
     total_len = sum(len(path) for path in paths.values())  # type: ignore[misc, arg-type]
     assert total_len > 0
     p_next_given_goal = {
-        next_pos: 0 if pos in bad_nexts else 1 - (len(path) / total_len)  # type: ignore[arg-type]
+        next_pos: 1 - (len(path) / total_len)  # type: ignore[arg-type]
         for next_pos, path in paths.items()
     }
     p_next_given_goal = normalize(p_next_given_goal, alpha)
@@ -117,6 +112,7 @@ def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
         pos=watcher.pos,
         key_id=watcher.key.identifier if watcher.key else None,
         used_key_ids=[],
+        dropped_keys={},
         parent=None,
     )
     paths = {}
@@ -130,6 +126,7 @@ def choose_move_given_beliefs(watcher, world, beliefs, alpha: float):
             pos=world.maindoor.pos,
             key_id=potential_goal,
             used_key_ids=[],
+            dropped_keys={},
             parent=None,
         )
         for next_node in available_nodes:

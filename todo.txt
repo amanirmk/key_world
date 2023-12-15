@@ -2,14 +2,13 @@ WORLD
 - design some worlds
 - implement worlds (amani)
 
-AGENTS
--fix "impossible to reach goal" error (drop_keys branch)
-
 ANALYSIS
-- recording events of game (and playing back)
 - pipeline for running model and collecting data
 - pipeline for evaluating model on human data
 
-VISUALIZATION
-- visualization of putting down key
-- color of main door (should be gray or something)
+QUESTION
+does our watcher have too much info?
+i just realized that we shouldn't be able to see any door colors,
+otherwise we can tell which one is the main door by process of elimination.
+however the planning algorithm "knows" that which key can open intermediate doors.
+i think we need to pretend that the knower can open any door with any key

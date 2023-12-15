@@ -2,6 +2,8 @@ import typing
 from enum import Enum
 from pydantic import BaseModel
 from collections import defaultdict
+from itertools import permutations
+import copy
 
 Orientation = Enum("Orientation", ["HORIZONTAL", "VERTICAL"])
 Lookups = Enum("Lookups", ["KEY", "HORIZONTAL", "VERTICAL"])
@@ -186,23 +188,149 @@ class World:
         )
 
 
-# Example usage
-example_world = World(
-    shape=(30, 40),
-    knower_start=Pos((14, 2)),
-    watcher_start=Pos((17, 30)),
+def generate_worlds():
+    for base_world in base_worlds:
+        door_key_ids = [d.key_id for d in base_world.doors]
+        key_ids = [k.identifier for k in base_world.keys]
+        possible_key_ids = set(door_key_ids + key_ids)
+        for selected_key_ids in permutations(possible_key_ids, len(door_key_ids)):
+            world = copy.deepcopy(base_world)
+            for i in range(len(selected_key_ids)):
+                world.doors[i].key_id = selected_key_ids[i]
+            if world.maindoor.key_id not in key_ids:
+                continue
+            yield world
+
+
+base_world_1 = World(
+    shape=(20, 20),
+    knower_start=Pos((9, 2)),
+    watcher_start=Pos((9, 18)),
     keys=[
         Key(pos=Pos((2, 2)), identifier=1),
-        Key(pos=Pos((21, 26)), identifier=1),
-        Key(pos=Pos((2, 10)), identifier=2),
-        Key(pos=Pos((6, 26)), identifier=2),
+        Key(pos=Pos((2, 7)), identifier=2),
+        Key(pos=Pos((2, 12)), identifier=1),
+        Key(pos=Pos((18, 12)), identifier=2),
     ],
-    doors=[Door(pos=Pos((24, 15)), orientation=Orientation.VERTICAL, key_id=5)],
+    doors=[],
     maindoor=MainDoor(
-        pos=Pos((14, 20)), orientation=Orientation.HORIZONTAL, key_id=2, is_open=False
+        pos=Pos((9, 10)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
     ),
     walls=[
-        Wall(pos=Pos((i, 20)), orientation=Orientation.HORIZONTAL)
-        for i in list(range(14)) + list(range(15, 30))
+        Wall(pos=Pos((i, 10)), orientation=Orientation.HORIZONTAL)
+        for i in list(range(9)) + list(range(10, 20))
     ],
 )
+
+base_world_1_with_walls = World(
+    shape=(20, 20),
+    knower_start=Pos((9, 2)),
+    watcher_start=Pos((9, 18)),
+    keys=[
+        Key(pos=Pos((2, 2)), identifier=1),
+        Key(pos=Pos((2, 7)), identifier=2),
+        Key(pos=Pos((2, 12)), identifier=1),
+        Key(pos=Pos((18, 12)), identifier=2),
+    ],
+    doors=[],
+    maindoor=MainDoor(
+        pos=Pos((9, 10)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
+    ),
+    walls=[
+        Wall(pos=Pos((i, 10)), orientation=Orientation.HORIZONTAL)
+        for i in list(range(9)) + list(range(10, 20))
+    ]
+    + [
+        Wall(pos=Pos((5, 1)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((5, 2)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((5, 3)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((4, 7)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((4, 6)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((3, 6)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((2, 6)), orientation=Orientation.HORIZONTAL),
+    ],
+)
+
+base_world_2 = World(
+    shape=(20, 20),
+    knower_start=Pos((9, 2)),
+    watcher_start=Pos((9, 18)),
+    keys=[
+        Key(pos=Pos((2, 2)), identifier=1),
+        Key(pos=Pos((2, 7)), identifier=2),
+        Key(pos=Pos((18, 2)), identifier=3),
+        Key(pos=Pos((2, 12)), identifier=1),
+        Key(pos=Pos((18, 12)), identifier=2),
+        Key(pos=Pos((2, 18)), identifier=3),
+    ],
+    doors=[Door(pos=Pos((16, 2)), orientation=Orientation.VERTICAL, key_id=2)],
+    maindoor=MainDoor(
+        pos=Pos((9, 10)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
+    ),
+    walls=[
+        Wall(pos=Pos((i, 10)), orientation=Orientation.HORIZONTAL)
+        for i in list(range(9)) + list(range(10, 20))
+    ]
+    + [
+        Wall(pos=Pos((16, 1)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((16, 3)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((16, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((17, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((18, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((19, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((16, 4)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((17, 4)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((18, 4)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((19, 4)), orientation=Orientation.HORIZONTAL),
+    ],
+)
+
+base_world_2_with_walls = World(
+    shape=(20, 20),
+    knower_start=Pos((9, 2)),
+    watcher_start=Pos((9, 18)),
+    keys=[
+        Key(pos=Pos((2, 2)), identifier=1),
+        Key(pos=Pos((2, 7)), identifier=2),
+        Key(pos=Pos((18, 2)), identifier=3),
+        Key(pos=Pos((2, 12)), identifier=1),
+        Key(pos=Pos((18, 12)), identifier=2),
+        Key(pos=Pos((2, 18)), identifier=3),
+    ],
+    doors=[Door(pos=Pos((16, 2)), orientation=Orientation.VERTICAL, key_id=2)],
+    maindoor=MainDoor(
+        pos=Pos((9, 10)), orientation=Orientation.HORIZONTAL, key_id=1, is_open=False
+    ),
+    walls=[
+        Wall(pos=Pos((i, 10)), orientation=Orientation.HORIZONTAL)
+        for i in list(range(9)) + list(range(10, 20))
+    ]
+    + [
+        Wall(pos=Pos((16, 1)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((16, 3)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((16, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((17, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((18, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((19, 1)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((16, 4)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((17, 4)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((18, 4)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((19, 4)), orientation=Orientation.HORIZONTAL),
+    ]
+    + [
+        Wall(pos=Pos((5, 1)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((5, 2)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((5, 3)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((4, 7)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((4, 6)), orientation=Orientation.VERTICAL),
+        Wall(pos=Pos((3, 6)), orientation=Orientation.HORIZONTAL),
+        Wall(pos=Pos((2, 6)), orientation=Orientation.HORIZONTAL),
+    ],
+)
+
+base_worlds = [
+    base_world_1,
+    base_world_2,
+    base_world_1_with_walls,
+    base_world_2_with_walls,
+]

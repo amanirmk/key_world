@@ -1,26 +1,31 @@
+import typing
 from goal_inference.game import Game
 from goal_inference.replay import Replay
-from goal_inference.world import example_world
+from goal_inference.world import generate_worlds
+import argparse
+import os
+import pathlib
+
+
+def record_game(args):
+    pass
+
+
+def evaluate_data(args):
+    pass
+
 
 if __name__ == "__main__":
-    # Game(
-    #     world=example_world,
-    #     human_player=True,
-    #     record=True,
-    #     output_folder="./outputs",
-    #     csv_name="log.csv",
-    #     # don't matter
-    #     alpha=20,
-    #     update_criteria=("turn", 1),
-    # ).play()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--play", action="store_true")
+    parser.add_argument("--eval", action="store_true")
+    parser.add_argument("--subj", type=str, default=None)
+    parser.add_argument("--folder", type=str, default="game_logs")
+    args = parser.parse_args()
 
-    df, summary = Replay(
-        world=example_world,
-        human_csv="./outputs/log.csv",
-        # matter
-        alpha=20,
-        update_criteria=("turn", 1),
-    ).replay()
-
-    print(summary)
-    df.to_csv("./outputs/replay.csv")
+    assert (args.play or args.eval) and not (args.play and args.eval)
+    if args.play:
+        assert args.subj is not None
+        record_game(args)
+    else:
+        evaluate_data(args)

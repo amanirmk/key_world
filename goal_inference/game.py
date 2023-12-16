@@ -215,6 +215,9 @@ class Game:
                 ):
                     # if both agents are at the door with the correct key, open the door
                     self.world.maindoor.is_open = True
+                if turn == 200:
+                    # failed to beat game
+                    break
             if self.gui:
                 self.update_images([old_pos, new_pos], last_updated)
                 self.window.update_idletasks()

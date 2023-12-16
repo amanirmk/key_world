@@ -11,7 +11,7 @@ import copy
 class Replay:
     def __init__(
         self,
-        world: World,  # TODO: read from csv name?
+        world: World,
         human_csv: str,
         alpha: float,
         update_criteria: typing.Tuple[str, float],
@@ -68,15 +68,4 @@ class Replay:
                 "reaction_time": self.human_data["reaction_time"],
             }
         )
-        summary = {
-            "avg_log_likelihood": replay_data["log_likelihood"].mean(),
-            "action_surprial_correlation": pearsonr(
-                replay_data["action_surprisal"].iloc[1:],
-                replay_data["reaction_time"].iloc[1:],
-            ),
-            "goal_surprial_correlation": pearsonr(
-                replay_data["goal_surprisal"].iloc[1:],
-                replay_data["reaction_time"].iloc[1:],
-            ),
-        }
-        return replay_data, summary
+        return replay_data

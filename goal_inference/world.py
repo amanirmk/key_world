@@ -189,17 +189,19 @@ class World:
 
 
 def generate_worlds():
+    all_worlds = []
     for base_world in base_worlds:
         door_key_ids = [d.key_id for d in base_world.doors]
         key_ids = [k.identifier for k in base_world.keys]
-        possible_key_ids = set(door_key_ids + key_ids)
+        possible_key_ids = sorted(list(set(door_key_ids + key_ids)))
         for selected_key_ids in permutations(possible_key_ids, len(door_key_ids)):
             world = copy.deepcopy(base_world)
             for i in range(len(selected_key_ids)):
                 world.doors[i].key_id = selected_key_ids[i]
             if world.maindoor.key_id not in key_ids:
                 continue
-            yield world
+            all_worlds.append(world)
+    return all_worlds
 
 
 base_world_1 = World(
@@ -334,3 +336,4 @@ base_worlds = [
     base_world_1_with_walls,
     base_world_2_with_walls,
 ]
+all_worlds = generate_worlds()

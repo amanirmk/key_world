@@ -1,7 +1,2 @@
-WORLD
-- design some worlds
-- implement worlds (amani)
-
-ANALYSIS
-- pipeline for running model and collecting data
-- pipeline for evaluating model on human data
+WORLD / AGENTS
+- fix crash (is world inaccessible or model broken?)

@@ -7,10 +7,11 @@ import copy
 
 class Node(BaseModel):
     pos: Pos
-    key_id: typing.Optional[int]
-    used_key_ids: typing.List[int]
-    dropped_keys: typing.Dict[Pos, Key]
-    parent: typing.Optional["Node"]
+    key_id: typing.Optional[int] = None
+    used_key_ids: typing.List[int] = []
+    opened_door_ids: typing.List[int] = []
+    dropped_keys: typing.Dict[Pos, Key] = {}
+    parent: typing.Optional["Node"] = None
 
     def __eq__(self, other):
         if not isinstance(other, Node):
@@ -30,66 +31,62 @@ class Node(BaseModel):
 def get_moves(world: World) -> typing.List[Pos]:
     start = Node(
         pos=world.knower_start,
-        key_id=None,
-        used_key_ids=[],
-        dropped_keys={},
-        parent=None,
     )
     assert world.maindoor.orientation is Orientation.HORIZONTAL
     goal_pos = Pos((world.maindoor.pos[0], world.maindoor.pos[1] - 1))
     goal = Node(
         pos=goal_pos,
         key_id=world.maindoor.key_id,
-        used_key_ids=[],
-        dropped_keys={},
-        parent=None,
     )
     get_neighbors = make_get_neighbors(world)
-    return find_path(start, goal, get_neighbors)
+    path = find_path(start, goal, get_neighbors)
+    return path
 
 
 def make_get_neighbors(
     world: World, key_agnostic=False
 ) -> typing.Callable[[Node], typing.List[Node]]:
-    get_node = make_get_node(world)
+    get_node = make_get_node(world, key_agnostic)
 
     def get_neighbors(node: Node) -> typing.List[Node]:
         options = set()
-        for key_id in node.used_key_ids + [node.key_id]:
-            options.update(world.get_accessible_neighbors(node.pos, key_id))
-        return [get_node(node, opt) for opt in options]
-
-    def agnostic_get_neighbors(node: Node) -> typing.List[Node]:
-        options = set()
         key_ids: typing.Set[typing.Optional[int]] = set(node.used_key_ids)
         key_ids.add(node.key_id)
-        if node.key_id:
+        if key_agnostic and node.key_id:
             # if you have a key, you have all keys
             key_ids.update([k.identifier for k in world.keys])
         for key_id in key_ids:
             options.update(world.get_accessible_neighbors(node.pos, key_id))
         return [get_node(node, opt) for opt in options]
 
-    if key_agnostic:
-        return agnostic_get_neighbors
     return get_neighbors
 
 
 def make_get_node(
-    world: World,
+    world: World, key_agnostic: bool = False
 ) -> typing.Callable[[Node, typing.Tuple[Pos, typing.Optional[Door]]], Node]:
     def get_node(
-        curr_node: Node, option: typing.Tuple[Pos, typing.Optional[Door]]
+        curr_node: Node,
+        option: typing.Tuple[Pos, typing.Optional[Door]],
     ) -> Node:
         pos, door = option
         curr_key_id = curr_node.key_id
         used_key_ids = copy.deepcopy(curr_node.used_key_ids)
+        opened_door_ids = copy.deepcopy(curr_node.opened_door_ids)
         dropped_keys = copy.deepcopy(curr_node.dropped_keys)
 
+        if not key_agnostic:
+            assert len(opened_door_ids) == 0
+
         # open door
-        if door and door.key_id == curr_key_id:
-            used_key_ids.append(curr_key_id)
-            curr_key_id = None
+        if key_agnostic:
+            if door and door.key_id not in opened_door_ids:
+                assert curr_key_id is not None
+                opened_door_ids.append(door.key_id)
+                used_key_ids.append(curr_key_id)
+        else:
+            if door and door.key_id == curr_key_id:
+                used_key_ids.append(curr_key_id)
 
         # pick up key
         new_key: typing.Optional[Key] = world.lookup(pos, Lookups.KEY)  # type: ignore[assignment]
@@ -116,6 +113,7 @@ def make_get_node(
             pos=pos,
             key_id=new_key_id,
             used_key_ids=used_key_ids,
+            opened_door_ids=opened_door_ids,
             dropped_keys=dropped_keys,
             parent=curr_node,
         )
@@ -135,7 +133,7 @@ def find_path(start: Node, goal: Node, get_neighbors) -> typing.List[Pos]:
             if child_node not in seen:
                 seen.add(child_node)
                 queue.append(child_node)
-    raise RuntimeError("Could not reach the goal")
+    raise RuntimeError("Could not find a path to the goal")
 
 
 def get_path_to(node: Node, pos_seq: typing.List[Pos] = []) -> typing.List[Pos]:

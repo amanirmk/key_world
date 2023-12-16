@@ -1,2 +1,0 @@
-WORLD / AGENTS
-- fix crash (is world inaccessible or model broken?)

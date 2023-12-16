@@ -51,11 +51,7 @@ def replay_generator(folder, num_alphas, num_n_turns, num_p_actions, num_p_goals
             hyperparam_search(num_alphas, num_n_turns, num_p_actions, num_p_goals),
             files,
         ),
-        total=(
-            len(files)
-            * num_alphas
-            * (num_n_turns + num_p_actions + num_p_goals)
-        ),
+        total=(len(files) * num_alphas * (num_n_turns + num_p_actions + num_p_goals)),
     ):
         idx = int(human_csv.stem.split("_")[1])
         world = all_worlds[idx]

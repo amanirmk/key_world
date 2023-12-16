@@ -93,6 +93,7 @@ def evaluate_data(args):
             )
             data.to_csv(output_folder / output_file, index=False)
             del replay
+            del data
             gc.collect()
 
 

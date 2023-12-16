@@ -9,6 +9,7 @@ from tqdm import tqdm  # type: ignore[import-untyped]
 import gc
 from itertools import product
 import logging
+from joblib import Parallel, delayed, parallel_backend  # type: ignore[import-untyped]
 
 
 def hyperparam_search(num_alphas, num_n_turns, num_p_actions, num_p_goals):
@@ -104,7 +105,9 @@ def record_game(args):
 def run_model(args):
     folder = pathlib.Path(args.run_model_folder)
     folder.mkdir(parents=True, exist_ok=True)
-    for (alpha, update_criteria), (idx, world) in get_settings("run"):
+
+    def play_game(settings):
+        (alpha, update_criteria), (idx, world) = settings
         game = Game(
             world=world,
             human_player=False,
@@ -119,15 +122,18 @@ def run_model(args):
         del game
         gc.collect()
 
+    with parallel_backend("loky", n_jobs=-2):
+        Parallel()(delayed(play_game)(settings) for settings in get_settings("run"))
+
 
 def evaluate_data(args):
     output_folder = pathlib.Path(args.eval_data_folder)
     input_folder = pathlib.Path(args.record_game_folder)
     assert os.path.exists(input_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
-    for (alpha, update_criteria), (world, human_csv) in get_settings(
-        "replay", input_folder
-    ):
+
+    def replay_game(settings):
+        (alpha, update_criteria), (world, human_csv) = settings
         replay = Replay(
             world=world,
             human_csv=human_csv,
@@ -140,6 +146,12 @@ def evaluate_data(args):
         del replay
         del data
         gc.collect()
+
+    with parallel_backend("loky", n_jobs=-2):
+        Parallel()(
+            delayed(replay_game)(settings)
+            for settings in get_settings("replay", input_folder)
+        )
 
 
 if __name__ == "__main__":

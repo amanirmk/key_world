@@ -7,13 +7,20 @@ import numpy as np
 import os
 from tqdm import tqdm  # type: ignore[import-untyped]
 import gc
+from itertools import product
+import logging
+from joblib import Parallel, delayed, parallel_backend  # type: ignore[import-untyped]
 
 
-def hyperparam_search():
-    alphas = np.logspace(0, 5, num=6, base=4)
-    n_turns = np.arange(1, 5 + 1)
-    p_actions = np.linspace(0.01, 0.65, num=5)
-    p_goals = np.linspace(0.01, 0.65, num=5)
+def hyperparam_search(num_alphas, num_n_turns, num_p_actions, num_p_goals):
+    alphas = np.logspace(0, 5, num=num_alphas, base=4)
+    n_turns = np.arange(1, num_n_turns + 1)
+    p_actions = np.linspace(0.01, 0.65, num=num_p_actions)
+    p_goals = np.linspace(0.01, 0.65, num=num_p_goals)
+    logging.info(f"Testing alphas in {list(alphas)}")
+    logging.info(f"Testing n_turns in {n_turns}")
+    logging.info(f"Testing p_actions in {p_actions}")
+    logging.info(f"Testing p_goals in {p_goals}")
     for alpha in alphas:
         for n in n_turns:
             yield alpha, ("turn", n)
@@ -21,6 +28,48 @@ def hyperparam_search():
             yield alpha, ("action", p)
         for p in p_goals:
             yield alpha, ("goal", p)
+
+
+def run_generator(num_alphas, num_n_turns, num_p_actions, num_p_goals):
+    logging.info(f"Starting a run sweep over {len(all_worlds)} worlds")
+    for (idx, world), hyperparams in tqdm(
+        product(
+            enumerate(all_worlds),
+            hyperparam_search(num_alphas, num_n_turns, num_p_actions, num_p_goals),
+        ),
+        total=(
+            len(all_worlds) * num_alphas * (num_n_turns + num_p_actions + num_p_goals)
+        ),
+    ):
+        yield hyperparams, (idx, world)
+
+
+def replay_generator(folder, num_alphas, num_n_turns, num_p_actions, num_p_goals):
+    files = list(folder.iterdir())
+    logging.info(f"Starting a replay sweep over {len(files)} recordings")
+    for hyperparams, human_csv in tqdm(
+        product(
+            hyperparam_search(num_alphas, num_n_turns, num_p_actions, num_p_goals),
+            files,
+        ),
+        total=(len(files) * num_alphas * (num_n_turns + num_p_actions + num_p_goals)),
+    ):
+        idx = int(human_csv.stem.split("_")[1])
+        world = all_worlds[idx]
+        yield hyperparams, (world, human_csv)
+
+
+def get_settings(
+    mode, folder=None, num_alphas=6, num_n_turns=5, num_p_actions=5, num_p_goals=5
+):
+    assert mode == "run" or mode == "replay"
+    if mode == "replay":
+        assert folder is not None
+        return replay_generator(
+            folder, num_alphas, num_n_turns, num_p_actions, num_p_goals
+        )
+    else:
+        return run_generator(num_alphas, num_n_turns, num_p_actions, num_p_goals)
 
 
 def record_game(args):
@@ -35,7 +84,7 @@ def record_game(args):
     assert len(played_worlds) == len(
         set(played_worlds)
     ), "Uh oh, there is a duplicate world!"
-    print(f"Worlds explored: {len(played_worlds)}")
+    logging.info(f"Subject: {args.subj}, Worlds explored: {len(played_worlds)}")
     assert len(played_worlds) <= len(all_worlds), "You have already played all worlds!"
     remaining_world_idxs = list(set(range(len(all_worlds))) - set(played_worlds))
     world_idx = np.random.choice(remaining_world_idxs)
@@ -56,21 +105,25 @@ def record_game(args):
 def run_model(args):
     folder = pathlib.Path(args.run_model_folder)
     folder.mkdir(parents=True, exist_ok=True)
-    for alpha, update_criteria in tqdm(hyperparam_search(), total=90):
-        for idx, world in enumerate(all_worlds):
-            game = Game(
-                world=world,
-                human_player=False,
-                record=True,
-                output_folder=folder,
-                csv_name=f"alpha={alpha}_update={update_criteria}_{idx}.csv",
-                alpha=alpha,
-                update_criteria=update_criteria,
-                gui=False,
-            )
-            game.play()
-            del game
-            gc.collect()
+
+    def play_game(settings):
+        (alpha, update_criteria), (idx, world) = settings
+        game = Game(
+            world=world,
+            human_player=False,
+            record=True,
+            output_folder=folder,
+            csv_name=f"update={update_criteria}_alpha={alpha}_{idx}.csv",
+            alpha=alpha,
+            update_criteria=update_criteria,
+            gui=False,
+        )
+        game.play()
+        del game
+        gc.collect()
+
+    with parallel_backend("loky", n_jobs=-2):
+        Parallel()(delayed(play_game)(settings) for settings in get_settings("run"))
 
 
 def evaluate_data(args):
@@ -78,23 +131,27 @@ def evaluate_data(args):
     input_folder = pathlib.Path(args.record_game_folder)
     assert os.path.exists(input_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
-    for alpha, update_criteria in tqdm(hyperparam_search(), total=90):
-        for human_csv in input_folder.iterdir():
-            idx = int(human_csv.stem.split("_")[1])
-            replay = Replay(
-                world=all_worlds[idx],
-                human_csv=human_csv,
-                alpha=alpha,
-                update_criteria=update_criteria,
-            )
-            data = replay.replay()
-            output_file = (
-                human_csv.stem + f"_alpha={alpha}_update={update_criteria}.csv"
-            )
-            data.to_csv(output_folder / output_file, index=False)
-            del replay
-            del data
-            gc.collect()
+
+    def replay_game(settings):
+        (alpha, update_criteria), (world, human_csv) = settings
+        replay = Replay(
+            world=world,
+            human_csv=human_csv,
+            alpha=alpha,
+            update_criteria=update_criteria,
+        )
+        data = replay.replay()
+        output_file = human_csv.stem + f"_update={update_criteria}_alpha={alpha}.csv"
+        data.to_csv(output_folder / output_file, index=False)
+        del replay
+        del data
+        gc.collect()
+
+    with parallel_backend("loky", n_jobs=-2):
+        Parallel()(
+            delayed(replay_game)(settings)
+            for settings in get_settings("replay", input_folder)
+        )
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import typing
 from goal_inference.world import World, Pos
 from goal_inference.agents import Knower, Watcher
-from scipy.stats import pearsonr  # type: ignore[import-untyped]
 import pandas as pd  # type: ignore[import-untyped]
 import numpy as np
 import os

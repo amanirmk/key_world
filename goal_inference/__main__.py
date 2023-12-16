@@ -85,7 +85,7 @@ def record_game(args):
         set(played_worlds)
     ), "Uh oh, there is a duplicate world!"
     logging.info(f"Subject: {args.subj}, Worlds explored: {len(played_worlds)}")
-    assert len(played_worlds) <= len(all_worlds), "You have already played all worlds!"
+    assert len(played_worlds) < len(all_worlds), "You have already played all worlds!"
     remaining_world_idxs = list(set(range(len(all_worlds))) - set(played_worlds))
     world_idx = np.random.choice(remaining_world_idxs)
     world = all_worlds[world_idx]

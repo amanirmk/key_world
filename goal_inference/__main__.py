@@ -5,6 +5,8 @@ import argparse
 import pathlib
 import numpy as np
 import os
+from tqdm import tqdm  # type: ignore[import-untyped]
+import gc
 
 
 def hyperparam_search():
@@ -26,11 +28,14 @@ def record_game(args):
     folder = pathlib.Path(args.record_game_folder)
     folder.mkdir(parents=True, exist_ok=True)
     played_worlds = [
-        f.stem.split("_")[1] for f in folder.iterdir() if f.stem.startswith(args.subj)
+        int(f.stem.split("_")[1])
+        for f in folder.iterdir()
+        if f.stem.startswith(args.subj)
     ]
     assert len(played_worlds) == len(
         set(played_worlds)
     ), "Uh oh, there is a duplicate world!"
+    print(f"Worlds explored: {len(played_worlds)}")
     assert len(played_worlds) <= len(all_worlds), "You have already played all worlds!"
     remaining_world_idxs = list(set(range(len(all_worlds))) - set(played_worlds))
     world_idx = np.random.choice(remaining_world_idxs)
@@ -39,10 +44,11 @@ def record_game(args):
         world=world,
         human_player=True,
         record=True,
-        output_folder=args.folder,
+        output_folder=folder,
         csv_name=f"{args.subj}_{world_idx}.csv",
         alpha=-1,
         update_criteria=("None", -1),
+        gui=True,
     )
     game.play()
 
@@ -50,18 +56,21 @@ def record_game(args):
 def run_model(args):
     folder = pathlib.Path(args.run_model_folder)
     folder.mkdir(parents=True, exist_ok=True)
-    for alpha, update_criteria in hyperparam_search():
+    for alpha, update_criteria in tqdm(hyperparam_search(), total=90):
         for idx, world in enumerate(all_worlds):
             game = Game(
                 world=world,
                 human_player=False,
                 record=True,
-                output_folder=args.folder,
+                output_folder=folder,
                 csv_name=f"alpha={alpha}_update={update_criteria}_{idx}.csv",
                 alpha=alpha,
                 update_criteria=update_criteria,
+                gui=False,
             )
             game.play()
+            del game
+            gc.collect()
 
 
 def evaluate_data(args):
@@ -69,9 +78,9 @@ def evaluate_data(args):
     input_folder = pathlib.Path(args.record_game_folder)
     assert os.path.exists(input_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
-    for alpha, update_criteria in hyperparam_search():
+    for alpha, update_criteria in tqdm(hyperparam_search(), total=90):
         for human_csv in input_folder.iterdir():
-            idx = human_csv.stem.split("_")[1]
+            idx = int(human_csv.stem.split("_")[1])
             replay = Replay(
                 world=all_worlds[idx],
                 human_csv=human_csv,
@@ -83,6 +92,8 @@ def evaluate_data(args):
                 human_csv.stem + f"_alpha={alpha}_update={update_criteria}.csv"
             )
             data.to_csv(output_folder / output_file, index=False)
+            del replay
+            gc.collect()
 
 
 if __name__ == "__main__":

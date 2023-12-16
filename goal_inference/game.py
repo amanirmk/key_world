@@ -25,12 +25,16 @@ class Game:
         record: bool = False,
         output_folder: str = "./outputs",
         csv_name: str = "log.csv",
+        gui: bool = True,
     ) -> None:
         self.BOX_SIZE = 50
         self.WALL_THICKNESS = 10
         self.FLOOR_IMAGE = "goal_inference/images/floor.png"
         self.KEY_IMAGE = "goal_inference/images/key.png"
         self.AGENT_IMAGE = "goal_inference/images/agent.png"
+        self.gui = gui
+        if human_player:
+            assert self.gui
         self.record = record
         self.output_folder = output_folder
         self.csv_name = csv_name
@@ -50,31 +54,31 @@ class Game:
             alpha=alpha,
             update_criteria=update_criteria,
         )
-
-        self.window = tk.Tk()
-        self.window.geometry(
-            f"{self.world.shape[0]*self.BOX_SIZE}x{self.world.shape[1]*self.BOX_SIZE}"
-        )
-        self.window.resizable(0, 0)  # type: ignore[call-overload]
-        self.window.title("Goal Inference Game")
-        self.grid = [
-            [
-                tk.Label(
-                    self.window,
-                    borderwidth=0,
-                    bg="black",
-                    padx=self.WALL_THICKNESS,
-                    pady=self.WALL_THICKNESS,
-                )
-                for _ in range(self.world.shape[0])
+        if gui:
+            self.window = tk.Tk()
+            self.window.geometry(
+                f"{self.world.shape[0]*self.BOX_SIZE}x{self.world.shape[1]*self.BOX_SIZE}"
+            )
+            self.window.resizable(0, 0)  # type: ignore[call-overload]
+            self.window.title("Goal Inference Game")
+            self.grid = [
+                [
+                    tk.Label(
+                        self.window,
+                        borderwidth=0,
+                        bg="black",
+                        padx=self.WALL_THICKNESS,
+                        pady=self.WALL_THICKNESS,
+                    )
+                    for _ in range(self.world.shape[0])
+                ]
+                for _ in range(self.world.shape[1])
             ]
-            for _ in range(self.world.shape[1])
-        ]
-        for x, y in product(range(self.world.shape[0]), range(self.world.shape[1])):
-            self.grid[y][x].grid(row=y, column=x)
+            for x, y in product(range(self.world.shape[0]), range(self.world.shape[1])):
+                self.grid[y][x].grid(row=y, column=x)
 
-        self.key_pressed = tk.StringVar()
-        self.window.bind("<KeyPress>", self.on_key_press)
+            self.key_pressed = tk.StringVar()
+            self.window.bind("<KeyPress>", self.on_key_press)
 
     def log_step(self, log_dict):
         path = pathlib.Path(self.output_folder) / self.csv_name
@@ -173,9 +177,10 @@ class Game:
 
     def play(self):
         turn = 0
-        self.update_images()
-        self.window.update_idletasks()
-        self.window.update()
+        if self.gui:
+            self.update_images()
+            self.window.update_idletasks()
+            self.window.update()
 
         while not self.world.maindoor.is_open:
             turn += 1
@@ -210,6 +215,9 @@ class Game:
                 ):
                     # if both agents are at the door with the correct key, open the door
                     self.world.maindoor.is_open = True
-            self.update_images([old_pos, new_pos], last_updated)
-            self.window.update_idletasks()
-            self.window.update()
+            if self.gui:
+                self.update_images([old_pos, new_pos], last_updated)
+                self.window.update_idletasks()
+                self.window.update()
+        if self.gui:
+            self.window.destroy()

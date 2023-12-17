@@ -14,7 +14,7 @@ def format_settings(update_criteria, alpha):
         c = "p"
     else:
         c = "n"
-    return fr"{kind}: ${c}={val}$, $\alpha={int(alpha)}$"
+    return rf"{kind}: ${c}={val}$, $\alpha={int(alpha)}$"
 
 
 def extract_data(input_folder, mode):

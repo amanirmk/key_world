@@ -126,8 +126,8 @@ def run_model(args):
         Parallel()(delayed(play_game)(settings) for settings in get_settings("run"))
 
 
-def evaluate_data(args):
-    output_folder = pathlib.Path(args.eval_data_folder)
+def replay_data(args):
+    output_folder = pathlib.Path(args.replay_data_folder)
     input_folder = pathlib.Path(args.record_game_folder)
     assert os.path.exists(input_folder)
     output_folder.mkdir(parents=True, exist_ok=True)
@@ -158,17 +158,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--record_game_folder", type=str, default="human_data")
     parser.add_argument("--run_model_folder", type=str, default="model_data")
-    parser.add_argument("--eval_data_folder", type=str, default="replay_data")
+    parser.add_argument("--replay_data_folder", type=str, default="replay_data")
     parser.add_argument("--record_game", action="store_true")
     parser.add_argument("--subj", type=str, default=None)
     parser.add_argument("--run_model", action="store_true")
-    parser.add_argument("--eval_data", action="store_true")
+    parser.add_argument("--replay_data", action="store_true")
     args = parser.parse_args()
-    assert sum([args.record_game, args.run_model, args.eval_data]) == 1
+    assert sum([args.record_game, args.run_model, args.replay_data]) == 1
 
     if args.record_game:
         record_game(args)
     elif args.run_model:
         run_model(args)
     else:
-        evaluate_data(args)
+        replay_data(args)

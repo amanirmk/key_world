@@ -5,6 +5,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns  # type: ignore[import-untyped]
 import numpy as np
 from scipy.stats import pearsonr  # type: ignore[import-untyped]
+from goal_inference.game import Game
+
+
+def format_settings(update_criteria, alpha):
+    kind, val = update_criteria
+    if kind in ["action", "goal"]:
+        c = "p"
+    else:
+        c = "n"
+    return fr"{kind}: ${c}={val}$, $\alpha={int(alpha)}$"
 
 
 def extract_data(input_folder, mode):
@@ -16,6 +26,7 @@ def extract_data(input_folder, mode):
             df["world"] = int(idx_str)
         elif mode == "model":
             update_criteria_str, alpha_str, idx_str = file.stem.split("_")
+            df["beliefs"] = df["beliefs"].apply(eval)
             df["world"] = int(idx_str)
             df["alpha"] = float(alpha_str.split("=")[1])
             df["update_criteria"] = [eval(update_criteria_str.split("=")[1])] * len(
@@ -137,25 +148,48 @@ def make_heatmaps(output_folder, summary, groupby, metric_cols):
         plt.savefig(
             output_folder / f"{'-'.join([col] + groupby)}.pdf", bbox_inches="tight"
         )
-        plt.clf()
+        plt.close()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--record_game_folder", type=str, default="human_data")
-    parser.add_argument("--run_model_folder", type=str, default="model_data")
-    parser.add_argument("--replay_data_folder", type=str, default="replay_data")
-    parser.add_argument("--human_data", action="store_true")
-    parser.add_argument("--model_data", action="store_true")
-    parser.add_argument("--replay_data", action="store_true")
-    args = parser.parse_args()
+def make_belief_plots(output_folder, model_data):
+    plt.style.use("ggplot")
+    plt.rc("text", usetex=True)
+    belief_data = model_data.groupby(
+        ["world", "update_criteria", "alpha"], as_index=False
+    )["beliefs"].apply(list)
+    for world in belief_data["world"].unique():
+        world_data = belief_data[belief_data["world"] == world]
+        for (update_criteria, alpha), beliefs in world_data.groupby(
+            ["update_criteria", "alpha"]
+        )["beliefs"]:
+            goals = list(beliefs.iloc[0][0].keys())
+            goal_data = [[b[g] for b in beliefs.iloc[0]] for g in goals]
+            plt.figure(figsize=(3, 3))
+            for g, g_data in zip(goals, goal_data):
+                plt.plot(
+                    g_data, color=(np.array(Game.key_colors(g)) / 255), linewidth=5
+                )
+            plt.ylim((0, 1))
+            plt.xticks([])
+            plt.yticks([])
+            plt.title(format_settings(update_criteria, alpha))
+            plt.savefig(
+                output_folder / f"{world}-{update_criteria}-{alpha}.pdf",
+                bbox_inches="tight",
+            )
+            plt.close()
 
-    if args.human_data:
-        data = extract_data(args.record_game_folder, mode="human")
+
+def analyze_data(
+    record_game_folder=None, run_model_folder=None, replay_data_folder=None
+):
+    if record_game_folder:
+        data = extract_data(record_game_folder, mode="human")
         performance_summary = get_performance(
             data, groupby=["world"], avg_over=["subj"]
         )
-        output_folder = pathlib.Path(args.record_game_folder + "_outputs")
+        output_folder = pathlib.Path(record_game_folder + "_outputs")
+        output_folder.mkdir(parents=True, exist_ok=True)
         make_heatmaps(
             output_folder,
             performance_summary,
@@ -163,25 +197,29 @@ if __name__ == "__main__":
             metric_cols=["speed_ratio", "speed_diff", "solved"],
         )
 
-    if args.model_data:
-        data = extract_data(args.run_model_folder, mode="model")
+    if run_model_folder:
+        data = extract_data(run_model_folder, mode="model")
         performance_summary = get_performance(
             data, groupby=["world", "alpha", "update_criteria"]
         )
-        output_folder = pathlib.Path(args.run_model_folder + "_outputs")
+        output_folder = pathlib.Path(run_model_folder + "_outputs")
+        belief_plot_folder = output_folder / "belief_plots"
+        belief_plot_folder.mkdir(parents=True, exist_ok=True)
         make_heatmaps(
             output_folder,
             performance_summary,
             groupby=["update_criteria", "alpha"],
             metric_cols=["speed_ratio", "speed_diff", "solved"],
         )
+        make_belief_plots(belief_plot_folder, data)
 
-    if args.replay_data:
-        data = extract_data(args.replay_data_folder, mode="replay")
+    if replay_data_folder:
+        data = extract_data(replay_data_folder, mode="replay")
         comparison_summary = get_comparison(
             data, groupby=["alpha", "update_criteria"], avg_over=["subj", "world"]
         )
-        output_folder = pathlib.Path(args.replay_data_folder + "_outputs")
+        output_folder = pathlib.Path(replay_data_folder + "_outputs")
+        output_folder.mkdir(parents=True, exist_ok=True)
         make_heatmaps(
             output_folder,
             comparison_summary,

@@ -1,3 +1,5 @@
 .mypy_cache
 *cache*
 .DS_Store
+*ubuntu.txt
+translate.py

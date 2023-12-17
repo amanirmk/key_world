@@ -1,6 +1,7 @@
 from goal_inference.game import Game
 from goal_inference.replay import Replay
 from goal_inference.world import all_worlds
+from goal_inference.analysis import analyze_data
 import argparse
 import pathlib
 import numpy as np
@@ -163,12 +164,22 @@ if __name__ == "__main__":
     parser.add_argument("--subj", type=str, default=None)
     parser.add_argument("--run_model", action="store_true")
     parser.add_argument("--replay_data", action="store_true")
+    parser.add_argument("--analyze_data", action="store_true")
     args = parser.parse_args()
-    assert sum([args.record_game, args.run_model, args.replay_data]) == 1
+    assert (
+        sum([args.record_game, args.run_model, args.replay_data, args.analyze_data])
+        == 1
+    )
 
     if args.record_game:
         record_game(args)
     elif args.run_model:
         run_model(args)
-    else:
+    elif args.replay_data:
         replay_data(args)
+    else:
+        analyze_data(
+            record_game_folder=args.record_game_folder,
+            run_model_folder=args.run_model_folder,
+            replay_data_folder=args.replay_data_folder,
+        )

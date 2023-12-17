@@ -103,18 +103,19 @@ class Game:
         pressed_key = self.key_pressed.get()
         return pressed_key
 
-    def key_colors(self, key_id: int) -> typing.Tuple[int, int, int]:
+    @staticmethod
+    def key_colors(key_id: int) -> typing.Tuple[int, int, int]:
         if key_id == -1:  # door
             return (200, 200, 200)
         colors = [
-            (6, 68, 191),
             (7, 199, 242),
-            (242, 227, 19),
             (242, 159, 5),
             (242, 5, 5),
+            (242, 227, 19),
+            (6, 68, 191),
         ]
-        assert 0 <= key_id < len(colors)
-        return colors[key_id]
+        assert 1 <= key_id <= len(colors)
+        return colors[key_id - 1]
 
     def update_images(
         self,

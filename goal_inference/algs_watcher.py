@@ -1,4 +1,3 @@
-# all the juicy stuff for the Watcher
 import typing
 import copy
 import numpy as np
